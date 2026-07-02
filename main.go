@@ -1,21 +1,65 @@
-// Command sweepr finds and (optionally) deletes disposable dev/OS junk.
-// See docs/SPEC.md, docs/ARCHITECTURE.md, docs/ROADMAP.md.
 package main
 
-func main() {
-	// TODO(phase 1): hardcode root := "." and call scanner.All(), print
-	// raw structs with fmt.Printf("%+v\n", item) to sanity-check scanning
-	// works before building any real CLI/output around it.
+import (
+	"fmt"
+	"sweepr/scanner"
+	"time"
+	"math"
+)
 
-	// TODO(phase 3): replace hardcoded root with flag.String, add -json.
-	// Sort results by SizeBytes (sort.Slice) and print a human table with
-	// human-readable byte sizes (write your own KB/MB/GB formatter).
+func formatSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
 
-	// TODO(phase 4): --only, --skip, --min-size, --min-age filtering.
+	// O(1) calculation of the exponent index
+	exp := int(math.Log2(float64(bytes)) / 10)
+	
+	// Edge case check to prevent array index out of bounds for extremely large values
+	if exp > 6 { 
+		exp = 6
+	}
 
-	// TODO(phase 5): --delete + confirmation prompt (bufio.NewReader(os.Stdin))
-	// + --yes to skip it. os.RemoveAll for dirs, os.Remove for files. Track
-	// and print bytes freed. Keep going on individual failures.
-
-	// TODO(phase 6): --json output via encoding/json.
+	div := math.Pow(unit, float64(exp))
+	return fmt.Sprintf("%.2f %cB", float64(bytes)/div, "KMGTPE"[exp-1])
 }
+
+func formatTime(t time.Time) string {
+	if t.IsZero() {
+		return "Never"
+	}
+	return t.Format("2006-01-02 15:04:05")
+}
+
+func main() {
+	root := "." // hardcoded for testing
+
+	scanners := scanner.All()
+
+	fmt.Printf("Starting sweepr scan..\n")
+
+	for _, s := range scanners {
+		fmt.Printf("Running scanner: \t%s...\n", s.Name())
+
+		items, err := s.Scan(root)
+		if err != nil {
+			fmt.Printf("Error running scanner %s: %v\n", s.Name(), err)
+			continue
+		}
+
+		for _, item := range items {
+			fmt.Printf(" %-12s %-40s %10s Last Mod: %s\n", 
+				item.Kind,
+				item.Path,
+				formatSize(item.SizeBytes),
+				formatTime(item.LastMod),
+			)
+		}
+	}
+
+	fmt.Println("Scan Finished!")
+	
+
+}
+

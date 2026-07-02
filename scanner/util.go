@@ -1,23 +1,60 @@
 package scanner
 
-import "time"
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+	"time"
+)
 
-// dirStats walks path and returns the total size of all files inside it,
-// plus the most recent modification time seen.
-//
-// TODO(phase 1):
-//   - filepath.WalkDir(path, ...)
-//   - for non-dir entries: add info.Size() to a running total
-//   - track the max ModTime seen across all entries
-//   - treat per-entry errors (permission denied etc.) as skip-not-abort
-func dirStats(path string) (int64, time.Time, error) {
-	return 0, time.Time{}, nil
+//dirStats walks a directory path recusively and returns:
+// total size of all files
+// most recent modification time seen
+// error if any
+
+func dirStats(path string) (int64, time.Time, error){
+	var totalSize int64
+	var maxMod time.Time
+	
+	//walkdir recursively walks the dile tree root path
+	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		//if there is and error accessing this specific file or folder return nil
+
+		if err != nil {
+			return nil
+		}
+
+		// only consider file size
+		if d.IsDir() {
+			return nil
+		}
+
+		// retrive detailed file info
+		info, err := d.Info()
+		if err != nil {
+			return nil // skip if cant file details info
+		}
+
+		//add file size to running total
+		totalSize += info.Size()
+
+		// if file's modification time is newer tha the newest we have seen, update it
+		if info.ModTime().After(maxMod){
+			maxMod = info.ModTime()
+		}
+		
+		return nil
+	})
+
+	return totalSize, maxMod, err
 }
 
-// fileStats is the single-file equivalent of dirStats, for scanners that
-// report individual junk files rather than whole directories.
-//
-// TODO(phase 2): os.Stat(path), return info.Size() and info.ModTime()
+// single file equivalent of dirStats
 func fileStats(path string) (int64, time.Time, error) {
-	return 0, time.Time{}, nil
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+
+	return info.Size(), info.ModTime(), nil
 }

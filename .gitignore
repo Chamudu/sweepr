@@ -4,3 +4,7 @@ sweepr
 # local tools/logs
 .DS_Store
 *.logs
+
+
+# test env
+test_env

@@ -1,31 +1,57 @@
 package scanner
 
-// devJunkNames maps a directory name we consider disposable to a friendly
-// "kind" label.
-//
-// TODO(phase 1): start with just {"node_modules": "node_modules"} and get
-// that fully working before filling in the rest.
-// TODO(phase 2): add dist, build, .next, target, __pycache__, .pytest_cache,
-// .venv, venv — see docs/SPEC.md for the full list.
-var devJunkNames = map[string]string{}
+import (
+	"io/fs"
+	"path/filepath"
+	
+)
 
-// DevJunkScanner finds disposable dev directories under a project root
-// (node_modules, build outputs, language-specific build/cache dirs).
-type DevJunkScanner struct{}
-
-func (s *DevJunkScanner) Name() string {
-	// TODO: return an identifier, e.g. "dev-junk"
-	return ""
+// Map directory names that are disposable to a friendly "kind" label.
+var devJunkNames = map[string]string{
+	"node_modules" : "node_modules",
 }
 
+//find disposable dev directories under a project root
+type DevJunkScanner struct{}
+
+// returns a short identifier used in output and filters
+func (s *DevJunkScanner) Name() string {
+	return "dev-junk"
+}
+
+// scan walks the root dir recursively and returns all disposable folders
 func (s *DevJunkScanner) Scan(root string) ([]Item, error) {
-	// TODO(phase 1):
-	//   - filepath.WalkDir(root, ...)
-	//   - skip .git entirely (return filepath.SkipDir)
-	//   - if d.IsDir() && devJunkNames[d.Name()] exists:
-	//       compute size + last-mod (see util.go TODO)
-	//       append an Item
-	//       return filepath.SkipDir so you don't recurse into it
-	//   - handle walk errors by skipping the entry, not aborting
-	return nil, nil
+	var items []Item
+
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		if !d.IsDir() {
+			return nil	
+		}
+
+		if d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+
+		if kind, ok := devJunkNames[d.Name()]; ok {
+			size, modTime, _ := dirStats(path)
+
+			items = append(items, Item{
+				Path:	path,
+				Kind: 	kind,
+				SizeBytes: size,
+				LastMod: modTime,
+				IsDir: 	true,
+			})
+
+			return filepath.SkipDir
+		}
+
+		return nil
+	})
+
+	return items, err
 }

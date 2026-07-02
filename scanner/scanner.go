@@ -8,8 +8,6 @@ import "time"
 
 // Item represents one piece of reclaimable disk space: a directory
 // (node_modules, __pycache__, ~/.npm) or a single junk file (.DS_Store).
-//
-// TODO(phase 6): add `json:"..."` struct tags once you get to JSON output.
 type Item struct {
 	Path      string
 	Kind      string
@@ -29,12 +27,10 @@ type Scanner interface {
 }
 
 // All returns every built-in scanner.
-//
-// TODO(phase 1-2): as you implement each scanner, uncomment/add it here.
 func All() []Scanner {
 	return []Scanner{
-		// &DevJunkScanner{},
-		// &LangCacheScanner{},
+		&DevJunkScanner{},
+		//&LangCacheScanner{},
 		// &OSJunkScanner{},
 	}
 }
