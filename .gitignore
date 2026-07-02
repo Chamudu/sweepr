@@ -1,0 +1,6 @@
+#compiled binary
+sweepr
+
+# local tools/logs
+.DS_Store
+*.logs

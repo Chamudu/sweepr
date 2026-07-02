@@ -1,0 +1,63 @@
+# sweepr — Build Roadmap
+
+Build in this order. Each phase is runnable/testable on its own before
+moving to the next — don't let scope creep pull you into phase 3 while
+phase 1 doesn't work yet.
+
+## Phase 0 — Setup
+- [ ] `go mod init sweepr`
+- [ ] Write `scanner/scanner.go`: `Item` struct + `Scanner` interface + `All()`
+
+## Phase 1 — One working scanner end-to-end
+- [ ] Implement `DevJunkScanner` for just `node_modules` (skip the other
+      dir names for now — get one working fully before generalizing).
+- [ ] Implement `dirStats` helper (`filepath.WalkDir`, summing file sizes,
+      tracking latest mtime).
+- [ ] `main.go`: hardcode root to `"."`, call the scanner, print raw Go
+      structs with `fmt.Printf("%+v\n", item)`.
+- **Test it:** run inside a directory with a few `node_modules` folders,
+  confirm sizes look roughly right vs `du -sh`.
+
+## Phase 2 — Generalize + add more scanners
+- [ ] Expand `DevJunkScanner` to the full `devJunkNames` map (Node, Python, Rust, Go, Yarn, pnpm).
+- [ ] Add `OSJunkScanner` (`.DS_Store`, etc.) — simpler, no size-summing needed, just `os.Stat` on individual files. Check and skip symbolic links to avoid loops.
+- [ ] Add `LangCacheScanner` for `$HOME`-relative paths, including Xcode DerivedData and Android Gradle caches.
+
+## Phase 3 — Real CLI
+- [ ] Replace hardcoded root with the `flag` package: `-root`, `-json`.
+- [ ] Human-readable table output, sorted by size (`sort.Slice`).
+- [ ] Byte-to-human formatting (KB/MB/GB) — write this yourself, it's a good small exercise, don't reach for a library yet.
+
+## Phase 4 — Filtering
+- [ ] `--only` / `--skip` (comma-separated kind filters).
+- [ ] `--min-size` (parse strings like `"10MB"` — you'll want a small parser function; this is a good use of `strconv` + a switch on suffix).
+- [ ] `--min-age` (days since `LastMod`, using `time.Since`).
+
+## Phase 5 — Deletion & Safety (the dangerous part — go slow)
+- [ ] `--delete` flag, off by default.
+- [ ] Confirmation prompt reading from stdin (`bufio.NewReader(os.Stdin)`).
+- [ ] `--yes` to skip confirmation.
+- [ ] `os.RemoveAll` for dirs, `os.Remove` for files; track bytes freed and print a summary.
+- [ ] Implement error handling for locked files: log the issue but proceed to clean remaining files.
+- **Test it CAREFULLY:** point `-root` at a scratch directory you don't care about before ever running `--delete` on a real project tree.
+
+## Phase 6 — JSON output
+- [ ] `--json`: marshal `[]Item` with `encoding/json`, add `json:"..."` struct tags to `Item`.
+- **Test it:** `sweepr -json | jq .` and confirm it's clean.
+
+## Phase 7 (stretch) — Docker leftovers
+- [ ] New `DockerScanner` implementing the same `Scanner` interface, shelling out to `docker system df` / `docker image ls -f dangling=true` (`os/exec`).
+
+## Phase 8 (stretch) — Concurrency & Walking Optimizations
+- [ ] Run all scanners concurrently with goroutines + `sync.WaitGroup`, collect results via a channel or a mutex-protected slice.
+- [ ] Implement **Single-Pass Walking**: refactor the walkers to do a single directory traversal, passing paths to a matcher routine to avoid redundant disk I/O.
+
+## Phase 9 (stretch) — UI & Safe Trash
+- Pick one once the CLI is solid:
+  - **TUI:** `github.com/charmbracelet/bubbletea` + `lipgloss` — arrow-key navigation, space to toggle items for deletion, `d` to delete selected.
+  - **Local web UI:** `net/http` server exposing `/scan` and `/delete`, with a small HTML/JS frontend.
+  - **Native GUI:** `fyne.io/fyne`.
+- [ ] Add **Safe Trash Support**: Integrate trash libraries (like `github.com/electron/trash` equivalents, or native AppleScript/gio shell-outs) to move items to system trash instead of calling `RemoveAll`.
+
+## Suggested pace
+Phases 0–3 get you a genuinely useful tool. Don't feel obligated to keep going through 7–9 immediately — ship the CLI, use it on your own machine, then decide what's actually needed next.
