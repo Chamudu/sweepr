@@ -6,69 +6,96 @@ import (
 	"path/filepath"
 )
 
-// Map directory names that are disposable to a friendly "kind" label.
+// devJunkNames maps well-known disposable directory names to a short "kind" label.
+// The kind label is used in output formatting and future --only/--skip CLI filters.
+//
+// Design notes:
+//   - Multiple directory names can map to the same kind label. For example,
+//     "venv" and ".venv" both map to "python-venv" because they serve the same
+//     purpose (Python virtual environments) and users should be able to filter
+//     them together with --only python-venv.
+//   - We use map[string]string (not a slice) so that each directory name lookup
+//     is O(1) regardless of how many entries are in the map.
 var devJunkNames = map[string]string{
-	"node_modules"	: "node_modules",
-	"dist"			: "dist",
-	"build"			: "build",
-	".next"			: "next-cache",
-	"target"		: "rust-target",
-	"__pycache__"	: "python-cache",
-	".venv"			: "python-venv",
-	"venv"			: "python-venv",
-	".pytest_cache"	: "pytest-cache",
-	".poetry"		: "poetry-cache",
+	// JavaScript / TypeScript
+	"node_modules": "node_modules", // npm / yarn / pnpm dependencies
+	"dist":         "dist",         // generic compiled output
+	"build":        "build",        // generic compiled output
+	".next":        "next-cache",   // Next.js server-side build cache
+
+	// Rust
+	"target": "rust-target", // Cargo build artefacts (can reach 10+ GB)
+
+	// Python
+	"__pycache__":  "python-cache", // CPython bytecode cache
+	".venv":        "python-venv",  // Virtual environment (created by venv / poetry)
+	"venv":         "python-venv",  // Virtual environment (alternate naming convention)
+	".pytest_cache": "pytest-cache", // pytest result cache
+	".poetry":      "poetry-cache", // Poetry package cache
 }
 
-//find disposable dev directories under a project root
+// DevJunkScanner finds disposable build-output and dependency directories
+// inside a project tree. It skips .git directories entirely and stops
+// descending into a directory once it recognises it as junk (so it does not
+// double-count nested node_modules, for example).
 type DevJunkScanner struct{}
 
-// returns a short identifier used in output and filters
+// Name satisfies the Scanner interface. The returned string is used in output
+// headers and future --only/--skip CLI filters.
 func (s *DevJunkScanner) Name() string {
 	return "dev-junk"
 }
 
-// scan walks the root dir recursively and returns all disposable folders
+// Scan walks root recursively and returns all disposable directories found.
+// Walking stops inside any recognised junk directory (filepath.SkipDir) so
+// nested junk (e.g. node_modules inside node_modules) is not double-reported.
 func (s *DevJunkScanner) Scan(root string) ([]Item, error) {
 	var items []Item
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		// 1 skip file that cannot be read
+		// Skip any entry we cannot read (permission denied, broken symlink target, etc.).
+		// Returning nil continues the walk instead of aborting it.
 		if err != nil {
 			return nil
 		}
 
-		// 2 symlink guard(get raw file info without following links)
+		// Symlink guard: use os.Lstat (does NOT follow symlinks) to get the raw
+		// file mode. If the entry is a symlink we skip it entirely. This prevents:
+		//   1. Infinite loops when a project has a symlink back to a parent dir.
+		//   2. Accidentally walking into system directories via a symlink.
 		info, lstatErr := os.Lstat(path)
 		if lstatErr != nil {
-			return nil	
+			return nil
 		}
-
 		if info.Mode()&os.ModeSymlink != 0 {
-			return nil // skip symlink to prevent loops and unsafe traversal
+			return nil
 		}
 
-		// 3 skip non directories	
+		// We only care about directories — individual files cannot be junk targets.
 		if !d.IsDir() {
-			return nil	
+			return nil
 		}
 
-		// 4. skip .git directories
+		// Skip .git entirely. We never want to scan or report Git internals.
 		if d.Name() == ".git" {
 			return filepath.SkipDir
 		}
 
+		// "Comma ok" map lookup: if d.Name() is in devJunkNames, ok is true and
+		// kind holds the mapped label. If not found, ok is false and we continue.
 		if kind, ok := devJunkNames[d.Name()]; ok {
 			size, modTime, _ := dirStats(path)
 
 			items = append(items, Item{
-				Path:	path,
-				Kind: 	kind,
+				Path:      path,
+				Kind:      kind,
 				SizeBytes: size,
-				LastMod: modTime,
-				IsDir: 	true,
+				LastMod:   modTime,
+				IsDir:     true,
 			})
 
+			// Skip descending into this directory — we've already counted it as a
+			// whole, and we do not want to report junk nested inside junk.
 			return filepath.SkipDir
 		}
 
