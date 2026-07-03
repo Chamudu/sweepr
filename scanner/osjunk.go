@@ -1,22 +1,64 @@
 package scanner
 
-// osJunkFiles are files the OS scatters through every folder it touches.
-//
-// TODO(phase 2): fill in {".DS_Store": true, "Thumbs.db": true, "desktop.ini": true}
-var osJunkFiles = map[string]bool{}
+import (
+	"io/fs"
+	"os"
+	"path/filepath"
+)
 
-// OSJunkScanner finds individual junk files (not directories) scattered
-// throughout a project tree.
+var osJunkFiles = map[string]bool{
+	".DS_Store":   true,  // macOS: Finder metadata file (created in every folder)
+	"Thumbs.db":   true,  // Windows: image thumbnail cache
+	"desktop.ini": true,  // Windows: folder customization settings
+}
+
+
 type OSJunkScanner struct{}
 
 func (s *OSJunkScanner) Name() string {
-	return ""
+	return "os-junk"
+
 }
 
 func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
-	// TODO(phase 2):
-	//   - filepath.WalkDir(root, ...)
-	//   - skip .git
-	//   - if !d.IsDir() && osJunkFiles[d.Name()]: fileStats() + append Item
-	return nil, nil
+
+	var items []Item
+
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		if d.IsDir() && d.Name() == ".git" {
+			return filepath.SkipDir
+		}
+
+		info, err := os.Lstat(path)
+		if err != nil {
+			return nil
+		}
+
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+		
+		if d.IsDir() {
+			return nil
+		}
+
+		if osJunkFiles[d.Name()] {
+			size, modTime, _ := fileStats(path)
+			items = append(items, Item{
+				Path: path,
+				Kind: "os-junk",
+				SizeBytes: size,
+				LastMod: modTime,
+				IsDir: false,
+			})
+		}
+
+		return nil
+	})
+	
+	return items, err
 }
