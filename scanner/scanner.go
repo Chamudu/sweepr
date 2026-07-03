@@ -30,7 +30,7 @@ type Scanner interface {
 func All() []Scanner {
 	return []Scanner{
 		&DevJunkScanner{},
-		//&LangCacheScanner{},
-		// &OSJunkScanner{},
+		&LangCacheScanner{},
+		&OSJunkScanner{},
 	}
 }

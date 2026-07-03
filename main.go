@@ -35,12 +35,15 @@ func formatTime(t time.Time) string {
 func main() {
 	root := "." // hardcoded for testing
 
+	var totalItems int
+	var totalBytes int64
+
 	scanners := scanner.All()
 
 	fmt.Printf("Starting sweepr scan..\n")
 
 	for _, s := range scanners {
-		fmt.Printf("Running scanner: \t%s...\n", s.Name())
+		fmt.Printf("\nRunning scanner: %s...\n", s.Name())
 
 		items, err := s.Scan(root)
 		if err != nil {
@@ -49,16 +52,19 @@ func main() {
 		}
 
 		for _, item := range items {
-			fmt.Printf(" %-12s %-40s %10s Last Mod: %s\n", 
+			fmt.Printf("\t%-22s %-40s %10s Last Mod: %s\n", 
 				item.Kind,
 				item.Path,
 				formatSize(item.SizeBytes),
 				formatTime(item.LastMod),
 			)
+
+			totalBytes += item.SizeBytes
+			totalItems++
 		}
 	}
 
-	fmt.Println("Scan Finished!")
+	fmt.Printf("Total items: %-12d Total size: %-40s\n",  totalItems,formatSize(totalBytes))
 	
 
 }
