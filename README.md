@@ -23,13 +23,13 @@ go build -o sweepr
 # Scan the current directory
 ./sweepr
 
-# (Coming in Phase 3) Scan a specific directory
+# Scan a specific directory
 ./sweepr /path/to/projects
 
-# (Coming in Phase 3) Run only a specific scanner
+# Run only a specific scanner
 ./sweepr --only dev-junk
 
-# (Coming in Phase 3) Skip a scanner
+# Skip a scanner
 ./sweepr --skip lang-cache
 ```
 
@@ -64,5 +64,5 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [docs/ROADMAP.md](docs/ROADMAP.md) for planned phases.
 
-Current: **Phase 2** — Multi-scanner support (dev-junk, os-junk, lang-cache).  
-Next: **Phase 3** — CLI flags (`--only`, `--skip`, path argument).
+Current: **Phase 3** — CLI flags (`--only`, `--skip`, path argument).  
+Next: **Phase 4** — Advanced filtering (`--min-size`, `--min-age`, size sorting).

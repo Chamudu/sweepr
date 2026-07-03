@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math"
 	"sweepr/scanner"
 	"time"
 )
+
 
 // formatSize converts a raw byte count into a human-readable string with the
 // appropriate unit (B, KB, MB, GB, TB, PB, EB). Uses binary units (1024-based),
@@ -46,11 +48,40 @@ func formatTime(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
+
+func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
+	if only == "" && skip == "" {
+		return  all
+	}
+
+	var result []scanner.Scanner
+
+	for _, s := range all {
+		if only != "" && s.Name() != only {
+			continue
+		}
+
+		if skip != "" && s.Name() == skip {
+			continue
+		}
+
+		result = append(result, s)
+	}
+
+	return result
+}
+
 func main() {
+	only := flag.String("only", "", "run only this scanner (e.g. dev-junk)")
+	skip := flag.String("skip", "", "skip this scanner by name")
+	flag.Parse()
+
 	// root is the directory to scan for project-level junk (dev-junk, os-junk).
 	// LangCacheScanner ignores this value and always checks $HOME.
-	// Phase 3 will replace this hardcoded value with a CLI argument.
 	root := "."
+	if flag.NArg() > 0 {
+		root = flag.Arg(0)
+	}
 
 	// totalItems and totalBytes accumulate counts across all scanners so we can
 	// print a meaningful summary at the end. They live inside main() (not at the
@@ -58,7 +89,7 @@ func main() {
 	var totalItems int
 	var totalBytes int64
 
-	scanners := scanner.All()
+	scanners := filterScanner(scanner.All(), *only, *skip)
 
 	fmt.Printf("Starting sweepr scan..\n")
 

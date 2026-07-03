@@ -5,28 +5,28 @@ moving to the next — don't let scope creep pull you into phase 3 while
 phase 1 doesn't work yet.
 
 ## Phase 0 — Setup
-- [ ] `go mod init sweepr`
-- [ ] Write `scanner/scanner.go`: `Item` struct + `Scanner` interface + `All()`
+- [x] `go mod init sweepr`
+- [x] Write `scanner/scanner.go`: `Item` struct + `Scanner` interface + `All()`
 
 ## Phase 1 — One working scanner end-to-end
-- [ ] Implement `DevJunkScanner` for just `node_modules` (skip the other
+- [x] Implement `DevJunkScanner` for just `node_modules` (skip the other
       dir names for now — get one working fully before generalizing).
-- [ ] Implement `dirStats` helper (`filepath.WalkDir`, summing file sizes,
+- [x] Implement `dirStats` helper (`filepath.WalkDir`, summing file sizes,
       tracking latest mtime).
-- [ ] `main.go`: hardcode root to `"."`, call the scanner, print raw Go
+- [x] `main.go`: hardcode root to `"."`, call the scanner, print raw Go
       structs with `fmt.Printf("%+v\n", item)`.
 - **Test it:** run inside a directory with a few `node_modules` folders,
   confirm sizes look roughly right vs `du -sh`.
 
 ## Phase 2 — Generalize + add more scanners
-- [ ] Expand `DevJunkScanner` to the full `devJunkNames` map (Node, Python, Rust, Go, Yarn, pnpm).
-- [ ] Add `OSJunkScanner` (`.DS_Store`, etc.) — simpler, no size-summing needed, just `os.Stat` on individual files. Check and skip symbolic links to avoid loops.
-- [ ] Add `LangCacheScanner` for `$HOME`-relative paths, including Xcode DerivedData and Android Gradle caches.
+- [x] Expand `DevJunkScanner` to the full `devJunkNames` map (Node, Python, Rust, Go, Yarn, pnpm).
+- [x] Add `OSJunkScanner` (`.DS_Store`, etc.) — simpler, no size-summing needed, just `os.Stat` on individual files. Check and skip symbolic links to avoid loops.
+- [x] Add `LangCacheScanner` for `$HOME`-relative paths, including Xcode DerivedData and Android Gradle caches.
 
 ## Phase 3 — Real CLI
-- [ ] Replace hardcoded root with the `flag` package: `-root`, `-json`.
+- [x] Replace hardcoded root with the `flag` package: `-root`, `-json`.
 - [ ] Human-readable table output, sorted by size (`sort.Slice`).
-- [ ] Byte-to-human formatting (KB/MB/GB) — write this yourself, it's a good small exercise, don't reach for a library yet.
+- [x] Byte-to-human formatting (KB/MB/GB) 
 
 ## Phase 4 — Filtering
 - [ ] `--only` / `--skip` (comma-separated kind filters).
