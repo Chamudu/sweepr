@@ -64,5 +64,5 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [docs/ROADMAP.md](docs/ROADMAP.md) for planned phases.
 
-Current: **Phase 3** — CLI flags (`--only`, `--skip`, path argument).  
-Next: **Phase 4** — Advanced filtering (`--min-size`, `--min-age`, size sorting).
+Current: **Phase 4** — Advanced filtering (`--only`, `--skip`, `--min-size`, `--min-age`, size sorting).  
+Next: **Phase 5** — Deletion & Safety Rules (`--delete`, confirmation prompts).

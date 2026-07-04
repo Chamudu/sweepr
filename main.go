@@ -3,9 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"math"
+	"sort"
 	"sweepr/scanner"
 	"time"
+	"strings"
+	"strconv"
+	"unicode"
 )
 
 
@@ -48,20 +53,40 @@ func formatTime(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
+func contains(list []string, target string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
 
 func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
+
 	if only == "" && skip == "" {
 		return  all
 	}
 
 	var result []scanner.Scanner
 
+	var onlyList []string
+	if only != "" {
+		onlyList = strings.Split(only, ",")
+	}
+
+	var skipList []string
+	if skip != "" {
+		skipList = strings.Split(skip, ",")
+	}
+
 	for _, s := range all {
-		if only != "" && s.Name() != only {
+		if only != "" && !contains(onlyList, s.Name()) {
 			continue
 		}
 
-		if skip != "" && s.Name() == skip {
+		if skip != "" && contains(skipList, s.Name()) {
 			continue
 		}
 
@@ -71,10 +96,70 @@ func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 	return result
 }
 
+func parseSize(s string)(int64, error){
+	// clean anyleading spaces
+	s = strings.TrimSpace(s)
+
+	var digitPart, unitPart string
+
+	for i, r := range s {
+		if !unicode.IsDigit(r) && r != '.' {
+			digitPart = s[:i]
+			unitPart = strings.TrimSpace(s[i:])
+			break
+		}
+	}
+
+	if digitPart == ""{
+		digitPart = s
+	}
+
+	val, err := strconv.ParseFloat(digitPart, 64) 
+
+	if err != nil {
+		return 0, fmt.Errorf("Invalid size format: %s", s)
+	}
+
+	var multiplier float64 = 1
+
+	switch strings.ToLower(unitPart) {
+	case "", "b":
+		multiplier = 1
+	case "kb", "k":
+		multiplier = 1024
+	case "mb", "m":
+		multiplier = 1024*1024
+	case "gb", "g":
+		multiplier = 1024*1024*1024
+	case "tb", "t":
+		multiplier = 1024*1024*1024*1024
+	default:
+		return 0, fmt.Errorf("Unknown unit %q in %s", unitPart, s)
+	}
+
+
+	return int64(val * multiplier), nil
+}
+
 func main() {
 	only := flag.String("only", "", "run only this scanner (e.g. dev-junk)")
 	skip := flag.String("skip", "", "skip this scanner by name")
+	minSize := flag.String("min-size", "", "minimum size of items to report (e.g. 10MB, 500KB)")
+	minAge := flag.Int("min-age", 0, "minimum age of items in days to report")
+
 	flag.Parse()
+
+	var minSizeBytes int64
+	if *minSize != "" {
+		var err error
+		minSizeBytes, err = parseSize(*minSize)
+
+		if err != nil {
+			fmt.Printf("Error: invalid min-size format: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 
 	// root is the directory to scan for project-level junk (dev-junk, os-junk).
 	// LangCacheScanner ignores this value and always checks $HOME.
@@ -88,6 +173,8 @@ func main() {
 	// package level) because they belong to a single scan run, not to the program.
 	var totalItems int
 	var totalBytes int64
+
+	var allItems []scanner.Item
 
 	scanners := filterScanner(scanner.All(), *only, *skip)
 
@@ -103,18 +190,37 @@ func main() {
 			continue
 		}
 
-		for _, item := range items {
-			fmt.Printf("\t%-22s %-40s %10s Last Mod: %s\n",
-				item.Kind,
-				item.Path,
-				formatSize(item.SizeBytes),
-				formatTime(item.LastMod),
-			)
-
-			totalBytes += item.SizeBytes
-			totalItems++
-		}
+		allItems = append(allItems, items...)	
 	}
+	fmt.Printf("\nScan Completed\n\n")
+
+	sort.Slice(allItems, func(i, j int) bool {
+		return allItems[i].SizeBytes > allItems[j].SizeBytes
+	})
+
+	for _, item := range allItems {
+		if item.SizeBytes < minSizeBytes {
+			continue
+		}
+
+
+		if *minAge > 0 {
+			minAgeDuration := time.Duration(*minAge) * 24 * time.Hour
+			if !item.LastMod.IsZero() && time.Since(item.LastMod) < minAgeDuration {
+				continue
+			}
+		}
+
+		fmt.Printf("\t%-22s %-40s %10s Last Mod: %s\n",
+			item.Kind,
+			item.Path,
+			formatSize(item.SizeBytes),
+			formatTime(item.LastMod),
+		)
+		totalBytes += item.SizeBytes
+		totalItems++
+	}
+	
 
 	fmt.Printf("\nTotal items: %-12d Total size: %s\n", totalItems, formatSize(totalBytes))
 }

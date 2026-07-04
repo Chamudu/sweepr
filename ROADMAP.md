@@ -25,13 +25,13 @@ phase 1 doesn't work yet.
 
 ## Phase 3 — Real CLI
 - [x] Replace hardcoded root with the `flag` package: `-root`, `-json`.
-- [ ] Human-readable table output, sorted by size (`sort.Slice`).
+- [x] Human-readable table output, sorted by size (`sort.Slice`).
 - [x] Byte-to-human formatting (KB/MB/GB) 
 
 ## Phase 4 — Filtering
-- [ ] `--only` / `--skip` (comma-separated kind filters).
-- [ ] `--min-size` (parse strings like `"10MB"` — you'll want a small parser function; this is a good use of `strconv` + a switch on suffix).
-- [ ] `--min-age` (days since `LastMod`, using `time.Since`).
+- [x] `--only` / `--skip` (comma-separated kind filters).
+- [x] `--min-size` (parse strings like `"10MB"` — you'll want a small parser function; this is a good use of `strconv` + a switch on suffix).
+- [x] `--min-age` (days since `LastMod`, using `time.Since`).
 
 ## Phase 5 — Deletion & Safety (the dangerous part — go slow)
 - [ ] `--delete` flag, off by default.
