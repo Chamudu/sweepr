@@ -64,5 +64,5 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [docs/ROADMAP.md](docs/ROADMAP.md) for planned phases.
 
-Current: **Phase 4** — Advanced filtering (`--only`, `--skip`, `--min-size`, `--min-age`, size sorting).  
-Next: **Phase 5** — Deletion & Safety Rules (`--delete`, confirmation prompts).
+Current: **Phase 5** — Deletion & Safety Rules (`--delete`, confirmation prompts).  
+Next: **Phase 6** — JSON Output (`--json` flag for machine readability).

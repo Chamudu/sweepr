@@ -34,11 +34,11 @@ phase 1 doesn't work yet.
 - [x] `--min-age` (days since `LastMod`, using `time.Since`).
 
 ## Phase 5 — Deletion & Safety (the dangerous part — go slow)
-- [ ] `--delete` flag, off by default.
-- [ ] Confirmation prompt reading from stdin (`bufio.NewReader(os.Stdin)`).
-- [ ] `--yes` to skip confirmation.
-- [ ] `os.RemoveAll` for dirs, `os.Remove` for files; track bytes freed and print a summary.
-- [ ] Implement error handling for locked files: log the issue but proceed to clean remaining files.
+- [x] `--delete` flag, off by default.
+- [x] Confirmation prompt reading from stdin (`bufio.NewReader(os.Stdin)`).
+- [x] `--yes` to skip confirmation.
+- [x] `os.RemoveAll` for dirs, `os.Remove` for files; track bytes freed and print a summary.
+- [x] Implement error handling for locked files: log the issue but proceed to clean remaining files.
 - **Test it CAREFULLY:** point `-root` at a scratch directory you don't care about before ever running `--delete` on a real project tree.
 
 ## Phase 6 — JSON output

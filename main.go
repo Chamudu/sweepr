@@ -11,6 +11,7 @@ import (
 	"strings"
 	"strconv"
 	"unicode"
+	"bufio"
 )
 
 
@@ -141,11 +142,73 @@ func parseSize(s string)(int64, error){
 	return int64(val * multiplier), nil
 }
 
+func deleteJunk(filteredItems []scanner.Item) {
+	var deletedCount int
+	var freedBytes int64
+	var failedCount int
+
+	fmt.Println() 
+
+	for _, item := range filteredItems {
+		var err error 
+		
+		if item.IsDir {
+			err = os.RemoveAll(item.Path)
+		} else {
+			err = os.Remove(item.Path)
+		}
+
+		if err != nil {
+			fmt.Printf("Error deleting %s: %v\n", item.Path, err)
+			failedCount++
+			continue
+		}
+
+		deletedCount++
+		freedBytes += item.SizeBytes
+		fmt.Printf("Deleted: %s (%s)\n", item.Path, formatSize(item.SizeBytes))
+	}
+
+	// Finaly Summary
+	fmt.Printf("\nSuccessfully deleted %d items, freed %s of space.\n", deletedCount, formatSize(freedBytes))
+
+	if failedCount > 0 {
+		fmt.Printf("Warning: failed to delete %d items.\n", failedCount)
+		os.Exit(1)
+	}
+}
+
+func header(root string, scanners []scanner.Scanner) {
+	home, _ := os.UserHomeDir()
+
+	fmt.Printf("\nStarting sweepr scan..\n")
+	fmt.Printf("\nTarget Directory: %s\n", root)
+	
+	// Show scope info
+	if root == "." || root == home {
+		fmt.Printf("\nScope: \tProject files + Global user caches (%s)\n", home)
+	} else {
+		fmt.Printf("\nScope: \tSubfolder scan (Global caches ignored for safety)\n")
+	}
+
+	// Show active scanners list
+	var activeNames []string
+	for _, s := range scanners {
+		activeNames = append(activeNames, s.Name())
+	}
+	fmt.Printf("Scanners: \t%s\n\n", strings.Join(activeNames, ", "))
+
+}
+
 func main() {
+
+	// FLAGS (only, skip, minSize, minAge)
 	only := flag.String("only", "", "run only this scanner (e.g. dev-junk)")
 	skip := flag.String("skip", "", "skip this scanner by name")
 	minSize := flag.String("min-size", "", "minimum size of items to report (e.g. 10MB, 500KB)")
 	minAge := flag.Int("min-age", 0, "minimum age of items in days to report")
+	deleteFlag := flag.Bool("delete", false, "Delete found juck items")
+	yesFlag := flag.Bool("yes", false, "skip confirmation prompt (Dangerous!)")
 
 	flag.Parse()
 
@@ -167,6 +230,17 @@ func main() {
 	if flag.NArg() > 0 {
 		root = flag.Arg(0)
 	}
+	// Automatically skip global cache if targeting a specific sub folder
+	home, _ := os.UserHomeDir()
+	effectiveSkip := *skip
+
+	if root != "." && root != home {
+		if effectiveSkip == "" {
+			effectiveSkip = "lang-cache"
+		} else if !strings.Contains(effectiveSkip, "lang-cache") {
+			effectiveSkip += ",lang-cache"
+		}
+	}
 
 	// totalItems and totalBytes accumulate counts across all scanners so we can
 	// print a meaningful summary at the end. They live inside main() (not at the
@@ -175,10 +249,11 @@ func main() {
 	var totalBytes int64
 
 	var allItems []scanner.Item
+	var filteredItems []scanner.Item
 
-	scanners := filterScanner(scanner.All(), *only, *skip)
+	scanners := filterScanner(scanner.All(), *only, effectiveSkip)
 
-	fmt.Printf("Starting sweepr scan..\n")
+	header(root, scanners)
 
 	for _, s := range scanners {
 		fmt.Printf("\nRunning scanner: %s...\n", s.Name())
@@ -194,16 +269,15 @@ func main() {
 	}
 	fmt.Printf("\nScan Completed\n\n")
 
-	sort.Slice(allItems, func(i, j int) bool {
-		return allItems[i].SizeBytes > allItems[j].SizeBytes
-	})
 
 	for _, item := range allItems {
+
+		// check min-size
 		if item.SizeBytes < minSizeBytes {
 			continue
 		}
 
-
+		// check min-size
 		if *minAge > 0 {
 			minAgeDuration := time.Duration(*minAge) * 24 * time.Hour
 			if !item.LastMod.IsZero() && time.Since(item.LastMod) < minAgeDuration {
@@ -211,6 +285,14 @@ func main() {
 			}
 		}
 
+		filteredItems = append(filteredItems, item)
+	}
+
+	sort.Slice(filteredItems, func(i, j int) bool {
+		return filteredItems[i].SizeBytes > filteredItems[j].SizeBytes
+	})
+
+	for _, item := range filteredItems {
 		fmt.Printf("\t%-22s %-40s %10s Last Mod: %s\n",
 			item.Kind,
 			item.Path,
@@ -223,4 +305,44 @@ func main() {
 	
 
 	fmt.Printf("\nTotal items: %-12d Total size: %s\n", totalItems, formatSize(totalBytes))
+
+
+	// If the user didn't specify, complete the dry-run mode
+	if !*deleteFlag {
+		return
+	}
+
+	// Safety Check: If there are no items matching filters, donts asks for deltetion
+	if len(filteredItems) == 0 {
+		fmt.Println(("No Junk found to delete."))
+		return
+	}
+
+
+	// Promt for confirmation unless --yess is passed
+	if !*yesFlag {
+		fmt.Printf("\nAre you sure you want to delete these %d items? (y/N): ", len(filteredItems))
+
+		// Create a reader connected to os.Stdin 
+		reader := bufio.NewReader(os.Stdin)
+
+		// read everything user type until they press Enter
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Printf("Error reading input: %v\n", err)
+			os.Exit(1)
+		}
+
+		// clean the input
+		input = strings.TrimSpace(strings.ToLower(input))
+
+		// fail-safe
+		if input != "y" && input != "yes" {
+			fmt.Println("\nDeletion aborted.")
+			return
+		}
+
+	}
+
+	deleteJunk(filteredItems)
 }
