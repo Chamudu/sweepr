@@ -24,7 +24,7 @@ var devJunkNames = map[string]string{
 	".next":        "next-cache",   // Next.js server-side build cache
 
 	// Rust
-	"target": "rust-target", // Cargo build artefacts (can reach 10+ GB)
+	"target": "rust-target", // Cargo build artefacts 
 
 	// Python
 	"__pycache__":  "python-cache", // CPython bytecode cache

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"encoding/json"
 	"os"
 	"math"
 	"sort"
@@ -209,8 +210,14 @@ func main() {
 	minAge := flag.Int("min-age", 0, "minimum age of items in days to report")
 	deleteFlag := flag.Bool("delete", false, "Delete found juck items")
 	yesFlag := flag.Bool("yes", false, "skip confirmation prompt (Dangerous!)")
+	jsonFlag := flag.Bool("json", false, "format output as JSON")
 
 	flag.Parse()
+
+	if *jsonFlag && *deleteFlag {
+		fmt.Fprintln(os.Stderr, "Error: cannot use --json and --delete together")
+		os.Exit(1)
+	}
 
 	var minSizeBytes int64
 	if *minSize != "" {
@@ -253,21 +260,34 @@ func main() {
 
 	scanners := filterScanner(scanner.All(), *only, effectiveSkip)
 
-	header(root, scanners)
+	if !*jsonFlag {
+		header(root, scanners)
+	}
+
 
 	for _, s := range scanners {
-		fmt.Printf("\nRunning scanner: %s...\n", s.Name())
+
+		if !*jsonFlag {
+			fmt.Printf("\nRunning scanner: %s...\n", s.Name())
+		}
 
 		items, err := s.Scan(root)
 		if err != nil {
 			// A scanner error is non-fatal: report it and continue with the rest.
-			fmt.Printf("Error running scanner %s: %v\n", s.Name(), err)
+			if !*jsonFlag {
+				fmt.Printf("Error running scanner %s: %v\n", s.Name(), err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Error running scanner %s: %v\n", s.Name(), err)
+			}
 			continue
 		}
 
 		allItems = append(allItems, items...)	
 	}
-	fmt.Printf("\nScan Completed\n\n")
+
+	if !*jsonFlag {
+		fmt.Printf("\nScan Completed\n\n")
+	}
 
 
 	for _, item := range allItems {
@@ -291,6 +311,23 @@ func main() {
 	sort.Slice(filteredItems, func(i, j int) bool {
 		return filteredItems[i].SizeBytes > filteredItems[j].SizeBytes
 	})
+
+	if *jsonFlag {
+		// Ensure a nil slice serialization to an empty JSON array '[]' instead of `null`
+		outputItems := filteredItems
+
+		if outputItems == nil {
+			outputItems = []scanner.Item{}
+		}
+
+		jsonData, err := json.MarshalIndent(outputItems, "", " ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error serializing JSON: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(string(jsonData))
+		return
+	}
 
 	for _, item := range filteredItems {
 		fmt.Printf("\t%-22s %-40s %10s Last Mod: %s\n",

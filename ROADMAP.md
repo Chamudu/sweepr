@@ -42,8 +42,8 @@ phase 1 doesn't work yet.
 - **Test it CAREFULLY:** point `-root` at a scratch directory you don't care about before ever running `--delete` on a real project tree.
 
 ## Phase 6 — JSON output
-- [ ] `--json`: marshal `[]Item` with `encoding/json`, add `json:"..."` struct tags to `Item`.
-- **Test it:** `sweepr -json | jq .` and confirm it's clean.
+- [x] `--json`: marshal `[]Item` with `encoding/json`, add `json:"..."` struct tags to `Item`.
+- [x] **Test it:** `sweepr -json | jq .` and confirm it's clean.
 
 ## Phase 7 (stretch) — Docker leftovers
 - [ ] New `DockerScanner` implementing the same `Scanner` interface, shelling out to `docker system df` / `docker image ls -f dangling=true` (`os/exec`).
