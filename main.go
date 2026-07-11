@@ -356,30 +356,75 @@ func main() {
 	}
 
 
+	var itemsToDelete []scanner.Item
+	deleteAllRemaining := false
+
+
 	// Promt for confirmation unless --yess is passed
-	if !*yesFlag {
-		fmt.Printf("\nAre you sure you want to delete these %d items? (y/N): ", len(filteredItems))
-
-		// Create a reader connected to os.Stdin 
+	if *yesFlag {
+		// if yes passed, select all items
+		itemsToDelete = filteredItems
+	} else {
 		reader := bufio.NewReader(os.Stdin)
+		fmt.Println("\nInteractive Deletion Mode")
+		fmt.Println("------------------------------")
 
-		// read everything user type until they press Enter
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Printf("Error reading input: %v\n", err)
-			os.Exit(1)
+		for i, item := range filteredItems {
+			// If user chose `a` (all) previously, automatically select remaining items
+			if deleteAllRemaining {
+				itemsToDelete = append(itemsToDelete, item)
+				continue
+			}
+
+			info := scanner.GetJunkInfo(item.Kind)
+			fmt.Printf("\n[%d/%d] Path: %s\n", i+1, len(filteredItems), item.Path)
+			fmt.Printf("	Kind: %s (%s)\n", item.Kind, formatSize(item.SizeBytes))
+			fmt.Printf("	Description: %s\n", info.Description)
+
+			if info.Warning != "" {
+				fmt.Printf("	Warning:	%s\n", info.Warning)
+			}
+
+			for {
+				fmt.Print("\n      Delete this item? [y (yes) / n (no) / a (all) / q (quit)]: ")
+				input, err := reader.ReadString('\n')
+
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
+					os.Exit(1)
+				}
+
+				input = strings.TrimSpace(strings.ToLower(input))
+
+				if input == "y" || input == "yes" {
+					itemsToDelete = append(itemsToDelete, item)
+					break
+				} else if input == "n" || input == "no" || input == "" {
+					fmt.Println("      Skipped.")
+					break
+				} else if input == "a" || input == "all" {
+					deleteAllRemaining = true
+					itemsToDelete = append(itemsToDelete, item)
+					fmt.Println("      Selecting all remaining items for deletion.")
+					break
+				} else if input == "q" || input == "quit" {
+					fmt.Println("\nInteractive deletion aborted.")
+					if len(itemsToDelete) > 0 {
+						fmt.Printf("Proceeding to delete the %d selected items...\n", len(itemsToDelete))
+						deleteJunk(itemsToDelete)
+					}
+					return
+				} else {
+					fmt.Println("      Invalid option. Please enter y, n, a, or q.")
+				}
+			}
 		}
-
-		// clean the input
-		input = strings.TrimSpace(strings.ToLower(input))
-
-		// fail-safe
-		if input != "y" && input != "yes" {
-			fmt.Println("\nDeletion aborted.")
-			return
-		}
-
 	}
 
-	deleteJunk(filteredItems)
+	if len(itemsToDelete) == 0 {
+		fmt.Println("\nNo items selected for deletion")
+		return
+	}
+
+	deleteJunk(itemsToDelete)
 }

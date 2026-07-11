@@ -27,7 +27,24 @@ var cacheRelPaths = map[string]string{
 	".local/share/pnpm":                  "pnpm-cache",
 	"Library/Developer/Xcode/DerivedData": "xcode-derived-data", // macOS only
 	".gradle/caches":                     "gradle-cache",
+
+	// Mobile Development
+	".android/avd":                       "android-emulator-snapshots", // Deletes stored states of virtual devices
+	"Library/Developer/Xcode/Archives":    "xcode-archives",             // macOS only: Past production build history
+	"Library/Caches/CocoaPods":            "cocoapods-cache",            // macOS only: iOS Swift/Obj-C package cache
+
+	// Compiler / Language Toolchains
+	".cache/clangd":                      "clangd-index-cache",         // C/C++ language server indexes
+	".cache/deno":                        "deno-cache",                 // Deno runtime and package storage
+	".cache/zig":                         "zig-cache",                  // Zig compiler global artifact store
+	".cache/supabase":                    "supabase-local-dev",         // Local database dev caches
+	".cache/hardhat":                     "hardhat-evm-cache",          // Ethereum/Web3 smart contract dev cache
+
+	// Additional package tools
+	".composer/cache":                    "php-composer-cache",         // PHP package dependency cache
+	".bower":                             "bower-cache",                // Legacy frontend package manager cache
 }
+
 
 // LangCacheScanner reports the disk usage of global package-manager caches
 // stored under the user's home directory. Unlike DevJunkScanner and
@@ -62,7 +79,7 @@ func (s *LangCacheScanner) Scan(root string) ([]Item, error) {
 	for relPath, kind := range cacheRelPaths {
 		// filepath.Join correctly handles OS path separators and cleans up any
 		// double slashes or trailing separators.
-		absPath := filepath.Join(home, relPath)
+		absPath := filepath.Join(home, filepath.FromSlash(relPath))
 
 		// os.Stat follows symlinks. An error here almost always means the path
 		// does not exist on this machine — use continue (not return) to check

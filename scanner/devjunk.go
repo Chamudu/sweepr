@@ -24,15 +24,39 @@ var devJunkNames = map[string]string{
 	".next":        "next-cache",   // Next.js server-side build cache
 
 	// Rust
-	"target": "rust-target", // Cargo build artefacts 
+	"target": "rust-target", // Cargo build artefacts (can reach 10+ GB)
 
 	// Python
-	"__pycache__":  "python-cache", // CPython bytecode cache
-	".venv":        "python-venv",  // Virtual environment (created by venv / poetry)
-	"venv":         "python-venv",  // Virtual environment (alternate naming convention)
-	".pytest_cache": "pytest-cache", // pytest result cache
-	".poetry":      "poetry-cache", // Poetry package cache
+	"__pycache__":   "python-cache",  // CPython bytecode cache
+	".venv":         "python-venv",   // Virtual environment (created by venv / poetry)
+	"venv":          "python-venv",   // Virtual environment (alternate naming convention)
+	".pytest_cache": "pytest-cache",  // pytest result cache
+	".poetry":       "poetry-cache",  // Poetry package cache
+
+	// Modern Frontend Frameworks
+	".nuxt":        "nuxt-cache",       // Nuxt.js framework tracking state
+	".svelte-kit":  "sveltekit-cache",   // SvelteKit compilation framework state
+	".docusaurus":  "docusaurus-cache", // Static site documentation build folders
+	".turbo":       "turborepo-cache",  // Turborepo local workspace caching records
+
+	// Python & Data Science
+	".ipynb_checkpoints": "jupyter-snapshots", // Jupyter Notebook automatic local backups
+	".tox":               "tox-virtualenv",      // Python automated testing environments
+	".mypy_cache":        "mypy-type-cache",     // Python strict type checking logs
+	"htmlcov":            "python-coverage",     // Code coverage reports generated from tests
+
+	// Native Compiled Environments
+	".zig-cache":          "zig-local-cache",   // Zig project build logs
+	"cmake-build-debug":   "cmake-debug",       // C/C++ CLion & CMake compilation folders
+	"cmake-build-release": "cmake-release",     // C/C++ Production optimization assets
+	".pnpm-store":         "pnpm-local-store",  // Soft-linked project engine items for pnpm
+
+	// Infrastructure & Infrastructure as Code (IaC)
+	".terraform":  "terraform-plugins",   // Cloned cloud providers & remote state configurations
+	".serverless": "serverless-framework", // AWS Lambda / Cloud provider local deployment packaging
+	".vagrant":    "vagrant-vm-state",    // Virtual box metadata tracking local environments
 }
+
 
 // DevJunkScanner finds disposable build-output and dependency directories
 // inside a project tree. It skips .git directories entirely and stops
