@@ -1,9 +1,5 @@
 # sweepr — Build Roadmap
 
-Build in this order. Each phase is runnable/testable on its own before
-moving to the next — don't let scope creep pull you into phase 3 while
-phase 1 doesn't work yet.
-
 ## Phase 0 — Setup
 - [x] `go mod init sweepr`
 - [x] Write `scanner/scanner.go`: `Item` struct + `Scanner` interface + `All()`
@@ -58,6 +54,3 @@ phase 1 doesn't work yet.
   - **Local web UI:** `net/http` server exposing `/scan` and `/delete`, with a small HTML/JS frontend.
   - **Native GUI:** `fyne.io/fyne`.
 - [ ] Add **Safe Trash Support**: Integrate trash libraries (like `github.com/electron/trash` equivalents, or native AppleScript/gio shell-outs) to move items to system trash instead of calling `RemoveAll`.
-
-## Suggested pace
-Phases 0–3 get you a genuinely useful tool. Don't feel obligated to keep going through 7–9 immediately — ship the CLI, use it on your own machine, then decide what's actually needed next.
