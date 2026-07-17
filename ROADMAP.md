@@ -50,7 +50,7 @@
       executable is not installed.
 - [x] Add explicit resource types so Docker IDs cannot reach filesystem
       deletion (`os.Remove` / `os.RemoveAll`).
-- [ ] Add Docker-aware deletion through the Docker CLI with the same explicit
+- [x] Add Docker-aware deletion through the Docker CLI with the same explicit
       confirmation and failure-reporting guarantees as filesystem deletion.
 
 ## Phase 8 (stretch) — Concurrency & Walking Optimizations

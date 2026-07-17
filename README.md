@@ -64,6 +64,6 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned phases.
 
-Current: **Phase 7** — report-only Docker dangling-image scanning is complete.
+Current: **Phase 7** — Docker dangling-image scanning and confirmed deletion are complete.
 
-Next: Docker-aware deletion with the existing confirmation and safety model.
+Next: **Phase 8** — concurrency and walking optimizations.

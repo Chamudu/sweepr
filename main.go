@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sweepr/remover"
 	"sweepr/scanner"
 	"time"
 	"unicode"
@@ -67,12 +68,7 @@ func displayTarget(item scanner.Item) string {
 // supportsDeletion reports whether sweepr currently has a safe deletion
 // implementation for this resource type. Unknown types fail closed.
 func supportsDeletion(item scanner.Item) bool {
-	switch item.ResourceType {
-	case scanner.ResourceDirectory, scanner.ResourceFile:
-		return true
-	default:
-		return false
-	}
+	return remover.Supports(item)
 }
 
 func contains(list []string, target string) bool {
@@ -169,19 +165,8 @@ func deleteJunk(filteredItems []scanner.Item) {
 	fmt.Println()
 
 	for _, item := range filteredItems {
-		var err error
 		target := displayTarget(item)
-
-		switch item.ResourceType {
-		case scanner.ResourceDirectory:
-			err = os.RemoveAll(item.Path)
-		case scanner.ResourceFile:
-			err = os.Remove(item.Path)
-		default:
-			fmt.Printf("Skipped unsupported resource type %q: %s\n", item.ResourceType, target)
-			failedCount++
-			continue
-		}
+		err := remover.Remove(item)
 
 		if err != nil {
 			fmt.Printf("Error deleting %s: %v\n", target, err)

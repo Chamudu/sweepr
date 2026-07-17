@@ -10,6 +10,7 @@ everything.
 sweepr/
 ├── go.mod
 ├── main.go              # CLI entrypoint: flags, wiring, output
+├── remover/             # resource-specific filesystem and Docker deletion
 ├── scanner/
 │   ├── scanner.go        # Item struct + Scanner interface + registry
 │   ├── util.go           # shared helpers (dirStats, fileStats)
@@ -52,10 +53,16 @@ such as Docker images. This prevents a Docker ID from being passed to
 human-readable text for resources whose stable identifier is not useful in a
 report.
 
-Every junk-finder (dev dirs, language caches, OS junk files, and later
-Docker) implements this. Adding a new junk type later = write one new
+Every junk-finder (dev dirs, language caches, OS junk files, and Docker)
+implements this. Adding a new junk type later = write one new
 file implementing `Scan`, add it to the registry in `scanner.go`. Nothing
 else changes.
+
+Deletion uses a parallel registry in `remover/`. Each remover declares which
+`ResourceType` values it supports and owns the corresponding removal mechanism.
+Filesystem resources use `os.Remove` / `os.RemoveAll`, while Docker images use
+`docker image rm`. This keeps non-filesystem identifiers away from filesystem
+deletion and prevents `main.go` from accumulating resource-specific commands.
 
 ## Data flow
 

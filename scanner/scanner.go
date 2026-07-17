@@ -126,7 +126,7 @@ func GetJunkInfo(kind string) JunkInfo {
 	case "docker-image":
 		return JunkInfo{
 			Description: "Dangling Docker image no longer referenced by a repository tag.",
-			Warning:     "Report only: Docker image deletion is not implemented yet.",
+			Warning:     "Deletion is permanent and removes the image through the Docker daemon.",
 		}
 	case "clangd-index-cache", "deno-cache", "zig-cache", "supabase-local-dev", "hardhat-evm-cache":
 		return JunkInfo{
