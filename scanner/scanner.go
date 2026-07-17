@@ -9,11 +9,11 @@ import "time"
 // Item represents one piece of reclaimable disk space: a directory
 // (node_modules, __pycache__, ~/.npm) or a single junk file (.DS_Store).
 type Item struct {
-	Path      string	`json:"path"`
-	Kind      string	`json:"kind"`
-	SizeBytes int64		`json:"size_bytes"`
-	LastMod   time.Time	`json:"last_mod"`
-	IsDir     bool		`json:"is_dir"`
+	Path      string    `json:"path"`
+	Kind      string    `json:"kind"`
+	SizeBytes int64     `json:"size_bytes"`
+	LastMod   time.Time `json:"last_mod"`
+	IsDir     bool      `json:"is_dir"`
 }
 
 // Scanner is the interface every junk-finder implements.
@@ -34,7 +34,6 @@ func All() []Scanner {
 		&OSJunkScanner{},
 	}
 }
-
 
 // JunkInfo holds descriptive explanation and safety warnings for a given junk kind.
 type JunkInfo struct {

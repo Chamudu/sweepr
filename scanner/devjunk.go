@@ -27,36 +27,35 @@ var devJunkNames = map[string]string{
 	"target": "rust-target", // Cargo build artefacts (can reach 10+ GB)
 
 	// Python
-	"__pycache__":   "python-cache",  // CPython bytecode cache
-	".venv":         "python-venv",   // Virtual environment (created by venv / poetry)
-	"venv":          "python-venv",   // Virtual environment (alternate naming convention)
-	".pytest_cache": "pytest-cache",  // pytest result cache
-	".poetry":       "poetry-cache",  // Poetry package cache
+	"__pycache__":   "python-cache", // CPython bytecode cache
+	".venv":         "python-venv",  // Virtual environment (created by venv / poetry)
+	"venv":          "python-venv",  // Virtual environment (alternate naming convention)
+	".pytest_cache": "pytest-cache", // pytest result cache
+	".poetry":       "poetry-cache", // Poetry package cache
 
 	// Modern Frontend Frameworks
-	".nuxt":        "nuxt-cache",       // Nuxt.js framework tracking state
-	".svelte-kit":  "sveltekit-cache",   // SvelteKit compilation framework state
-	".docusaurus":  "docusaurus-cache", // Static site documentation build folders
-	".turbo":       "turborepo-cache",  // Turborepo local workspace caching records
+	".nuxt":       "nuxt-cache",       // Nuxt.js framework tracking state
+	".svelte-kit": "sveltekit-cache",  // SvelteKit compilation framework state
+	".docusaurus": "docusaurus-cache", // Static site documentation build folders
+	".turbo":      "turborepo-cache",  // Turborepo local workspace caching records
 
 	// Python & Data Science
 	".ipynb_checkpoints": "jupyter-snapshots", // Jupyter Notebook automatic local backups
-	".tox":               "tox-virtualenv",      // Python automated testing environments
-	".mypy_cache":        "mypy-type-cache",     // Python strict type checking logs
-	"htmlcov":            "python-coverage",     // Code coverage reports generated from tests
+	".tox":               "tox-virtualenv",    // Python automated testing environments
+	".mypy_cache":        "mypy-type-cache",   // Python strict type checking logs
+	"htmlcov":            "python-coverage",   // Code coverage reports generated from tests
 
 	// Native Compiled Environments
-	".zig-cache":          "zig-local-cache",   // Zig project build logs
-	"cmake-build-debug":   "cmake-debug",       // C/C++ CLion & CMake compilation folders
-	"cmake-build-release": "cmake-release",     // C/C++ Production optimization assets
-	".pnpm-store":         "pnpm-local-store",  // Soft-linked project engine items for pnpm
+	".zig-cache":          "zig-local-cache",  // Zig project build logs
+	"cmake-build-debug":   "cmake-debug",      // C/C++ CLion & CMake compilation folders
+	"cmake-build-release": "cmake-release",    // C/C++ Production optimization assets
+	".pnpm-store":         "pnpm-local-store", // Soft-linked project engine items for pnpm
 
 	// Infrastructure & Infrastructure as Code (IaC)
-	".terraform":  "terraform-plugins",   // Cloned cloud providers & remote state configurations
+	".terraform":  "terraform-plugins",    // Cloned cloud providers & remote state configurations
 	".serverless": "serverless-framework", // AWS Lambda / Cloud provider local deployment packaging
-	".vagrant":    "vagrant-vm-state",    // Virtual box metadata tracking local environments
+	".vagrant":    "vagrant-vm-state",     // Virtual box metadata tracking local environments
 }
-
 
 // DevJunkScanner finds disposable build-output and dependency directories
 // inside a project tree. It skips .git directories entirely and stops
@@ -76,6 +75,9 @@ func (s *DevJunkScanner) Name() string {
 func (s *DevJunkScanner) Scan(root string) ([]Item, error) {
 	var items []Item
 
+	home, _ := os.UserHomeDir()      // Fetch home dir once
+	absRoot, _ := filepath.Abs(root) // Gets absolute path of the scan root
+
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		// Skip any entry we cannot read (permission denied, broken symlink target, etc.).
 		// Returning nil continues the walk instead of aborting it.
@@ -83,15 +85,15 @@ func (s *DevJunkScanner) Scan(root string) ([]Item, error) {
 			return nil
 		}
 
-		// Symlink guard: use os.Lstat (does NOT follow symlinks) to get the raw
-		// file mode. If the entry is a symlink we skip it entirely. This prevents:
-		//   1. Infinite loops when a project has a symlink back to a parent dir.
-		//   2. Accidentally walking into system directories via a symlink.
-		info, lstatErr := os.Lstat(path)
-		if lstatErr != nil {
-			return nil
+		// skip top-level global tool caches inside the home folder to avoid leaks
+		// Never skip root dir if user target it
+		absPath, _ := filepath.Abs(path)
+		if d.IsDir() && absPath != absRoot && ShouldSkipGlobalCacheDir(path, home) {
+			return filepath.SkipDir
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
+
+		// Symlink guard: Check the file type bits directly in memory using the fs.DirEntry.
+		if d.Type()&fs.ModeSymlink != 0 {
 			return nil
 		}
 

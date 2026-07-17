@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -63,4 +64,56 @@ func fileStats(path string) (int64, time.Time, error) {
 		return 0, time.Time{}, err
 	}
 	return info.Size(), info.ModTime(), nil
+}
+
+// ShouldSkipGlobalCacheDir returns true if the path points to a top-level hidden tool/cache
+// directory in the user's home directory that we should never walk recursively.
+// ShouldSkipGlobalCacheDir returns true if the path points to a tool/cache directory
+// in the user's home directory that we should never walk recursively.
+func ShouldSkipGlobalCacheDir(path string, home string) bool {
+	if home == "" {
+		return false
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+
+	// Calculate the relative path from HOME to the current directory
+	rel, err := filepath.Rel(home, absPath)
+	if err != nil {
+		return false
+	}
+
+	sep := string(filepath.Separator)
+
+	// 1. Skip any direct hidden subdirectories of HOME (e.g., ~/.gradle, ~/.npm, ~/.azure, ~/.vscode)
+	// We check if it doesn't contain a path separator and starts with "."
+	if !strings.Contains(rel, sep) && strings.HasPrefix(rel, ".") {
+		return true
+	}
+
+	// 2. Skip Go package cache specifically (e.g., ~/go/pkg)
+	if rel == "go"+sep+"pkg" || strings.HasPrefix(rel, "go"+sep+"pkg"+sep) {
+		return true
+	}
+
+	// 3. Skip other common visible tool folders directly under HOME
+	visibleToolsToSkip := []string{
+		"google-cloud-sdk",
+		"flutter",
+		"miniconda",
+		"miniconda3",
+		"anaconda",
+		"anaconda3",
+		"snap",
+	}
+	for _, dir := range visibleToolsToSkip {
+		if rel == dir {
+			return true
+		}
+	}
+
+	return false
 }

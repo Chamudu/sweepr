@@ -1,20 +1,20 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"encoding/json"
-	"os"
 	"math"
+	"os"
+	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 	"sweepr/scanner"
 	"time"
-	"strings"
-	"strconv"
 	"unicode"
-	"bufio"
 )
-
 
 // formatSize converts a raw byte count into a human-readable string with the
 // appropriate unit (B, KB, MB, GB, TB, PB, EB). Uses binary units (1024-based),
@@ -64,11 +64,10 @@ func contains(list []string, target string) bool {
 	return false
 }
 
-
 func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 
 	if only == "" && skip == "" {
-		return  all
+		return all
 	}
 
 	var result []scanner.Scanner
@@ -98,7 +97,7 @@ func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 	return result
 }
 
-func parseSize(s string)(int64, error){
+func parseSize(s string) (int64, error) {
 	// clean anyleading spaces
 	s = strings.TrimSpace(s)
 
@@ -112,11 +111,11 @@ func parseSize(s string)(int64, error){
 		}
 	}
 
-	if digitPart == ""{
+	if digitPart == "" {
 		digitPart = s
 	}
 
-	val, err := strconv.ParseFloat(digitPart, 64) 
+	val, err := strconv.ParseFloat(digitPart, 64)
 
 	if err != nil {
 		return 0, fmt.Errorf("Invalid size format: %s", s)
@@ -130,15 +129,14 @@ func parseSize(s string)(int64, error){
 	case "kb", "k":
 		multiplier = 1024
 	case "mb", "m":
-		multiplier = 1024*1024
+		multiplier = 1024 * 1024
 	case "gb", "g":
-		multiplier = 1024*1024*1024
+		multiplier = 1024 * 1024 * 1024
 	case "tb", "t":
-		multiplier = 1024*1024*1024*1024
+		multiplier = 1024 * 1024 * 1024 * 1024
 	default:
 		return 0, fmt.Errorf("Unknown unit %q in %s", unitPart, s)
 	}
-
 
 	return int64(val * multiplier), nil
 }
@@ -148,11 +146,11 @@ func deleteJunk(filteredItems []scanner.Item) {
 	var freedBytes int64
 	var failedCount int
 
-	fmt.Println() 
+	fmt.Println()
 
 	for _, item := range filteredItems {
-		var err error 
-		
+		var err error
+
 		if item.IsDir {
 			err = os.RemoveAll(item.Path)
 		} else {
@@ -184,7 +182,7 @@ func header(root string, scanners []scanner.Scanner) {
 
 	fmt.Printf("\nStarting sweepr scan..\n")
 	fmt.Printf("\nTarget Directory: %s\n", root)
-	
+
 	// Show scope info
 	if root == "." || root == home {
 		fmt.Printf("\nScope: \tProject files + Global user caches (%s)\n", home)
@@ -225,17 +223,21 @@ func main() {
 		minSizeBytes, err = parseSize(*minSize)
 
 		if err != nil {
-			fmt.Printf("Error: invalid min-size format: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error: invalid min-size format: %v\n", err)
 			os.Exit(1)
 		}
 	}
-
 
 	// root is the directory to scan for project-level junk (dev-junk, os-junk).
 	// LangCacheScanner ignores this value and always checks $HOME.
 	root := "."
 	if flag.NArg() > 0 {
 		root = flag.Arg(0)
+	}
+
+	// Resolve symlinks so the scanner can walk the real folder path if the root is a symlink
+	if realRoot, err := filepath.EvalSymlinks(root); err == nil {
+		root = realRoot
 	}
 	// Automatically skip global cache if targeting a specific sub folder
 	home, _ := os.UserHomeDir()
@@ -264,7 +266,6 @@ func main() {
 		header(root, scanners)
 	}
 
-
 	for _, s := range scanners {
 
 		if !*jsonFlag {
@@ -282,13 +283,12 @@ func main() {
 			continue
 		}
 
-		allItems = append(allItems, items...)	
+		allItems = append(allItems, items...)
 	}
 
 	if !*jsonFlag {
 		fmt.Printf("\nScan Completed\n\n")
 	}
-
 
 	for _, item := range allItems {
 
@@ -297,7 +297,7 @@ func main() {
 			continue
 		}
 
-		// check min-size
+		// check min-age
 		if *minAge > 0 {
 			minAgeDuration := time.Duration(*minAge) * 24 * time.Hour
 			if !item.LastMod.IsZero() && time.Since(item.LastMod) < minAgeDuration {
@@ -320,7 +320,7 @@ func main() {
 			outputItems = []scanner.Item{}
 		}
 
-		jsonData, err := json.MarshalIndent(outputItems, "", " ")
+		jsonData, err := json.MarshalIndent(outputItems, "", "  ")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error serializing JSON: %v\n", err)
 			os.Exit(1)
@@ -339,10 +339,8 @@ func main() {
 		totalBytes += item.SizeBytes
 		totalItems++
 	}
-	
 
 	fmt.Printf("\nTotal items: %-12d Total size: %s\n", totalItems, formatSize(totalBytes))
-
 
 	// If the user didn't specify, complete the dry-run mode
 	if !*deleteFlag {
@@ -355,10 +353,8 @@ func main() {
 		return
 	}
 
-
 	var itemsToDelete []scanner.Item
 	deleteAllRemaining := false
-
 
 	// Promt for confirmation unless --yess is passed
 	if *yesFlag {

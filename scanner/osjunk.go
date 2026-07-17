@@ -34,10 +34,19 @@ func (s *OSJunkScanner) Name() string {
 func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
 	var items []Item
 
+	home, _ := os.UserHomeDir()      // Fetch home directory once
+	absRoot, _ := filepath.Abs(root) // Get absolute path of the scan root
+
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		// Skip any entry we cannot read.
 		if err != nil {
 			return nil
+		}
+
+		// Skip top-level global tool caches inside the home folder to avoid leaks
+		absPath, _ := filepath.Abs(path)
+		if d.IsDir() && absPath != absRoot && ShouldSkipGlobalCacheDir(path, home) {
+			return filepath.SkipDir
 		}
 
 		// Skip .git before the symlink guard so we do not stat Git-internal paths.
@@ -45,15 +54,8 @@ func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
 		if d.IsDir() && d.Name() == ".git" {
 			return filepath.SkipDir
 		}
-
-		// Symlink guard: os.Lstat does NOT follow symlinks, so a symlink entry
-		// shows up with os.ModeSymlink set rather than as its target type.
-		// This prevents walking into unrelated parts of the filesystem.
-		info, err := os.Lstat(path)
-		if err != nil {
-			return nil
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
+		// Symlink guard: Check the file type bits directly in memory using the fs.DirEntry.
+		if d.Type()&fs.ModeSymlink != 0 {
 			return nil
 		}
 

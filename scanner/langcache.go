@@ -18,33 +18,37 @@ import (
 // different conventions (%AppData%, %LocalAppData%), which will be handled
 // in a future release via Go build constraints (//go:build windows).
 var cacheRelPaths = map[string]string{
-	".npm":                               "npm-cache",
-	".cache/pip":                         "pip-cache",
-	".cargo/registry/cache":              "cargo-cache",
-	"go/pkg/mod/cache/download":          "go-mod-cache",
-	".cache/go-build":                    "go-build-cache",
-	".cache/yarn":                        "yarn-cache",
-	".local/share/pnpm":                  "pnpm-cache",
+	".npm":                                "npm-cache",
+	".cache/pip":                          "pip-cache",
+	".cargo/registry/cache":               "cargo-cache",
+	"go/pkg/mod/cache/download":           "go-mod-cache",
+	".cache/go-build":                     "go-build-cache",
+	".cache/yarn":                         "yarn-cache",
+	".local/share/pnpm":                   "pnpm-cache",
 	"Library/Developer/Xcode/DerivedData": "xcode-derived-data", // macOS only
-	".gradle/caches":                     "gradle-cache",
+	".gradle/caches":                      "gradle-cache",
 
 	// Mobile Development
-	".android/avd":                       "android-emulator-snapshots", // Deletes stored states of virtual devices
-	"Library/Developer/Xcode/Archives":    "xcode-archives",             // macOS only: Past production build history
-	"Library/Caches/CocoaPods":            "cocoapods-cache",            // macOS only: iOS Swift/Obj-C package cache
+	".android/avd":                     "android-emulator-snapshots", // Deletes stored states of virtual devices
+	"Library/Developer/Xcode/Archives": "xcode-archives",             // macOS only: Past production build history
+	"Library/Caches/CocoaPods":         "cocoapods-cache",            // macOS only: iOS Swift/Obj-C package cache
 
 	// Compiler / Language Toolchains
-	".cache/clangd":                      "clangd-index-cache",         // C/C++ language server indexes
-	".cache/deno":                        "deno-cache",                 // Deno runtime and package storage
-	".cache/zig":                         "zig-cache",                  // Zig compiler global artifact store
-	".cache/supabase":                    "supabase-local-dev",         // Local database dev caches
-	".cache/hardhat":                     "hardhat-evm-cache",          // Ethereum/Web3 smart contract dev cache
+	".cache/clangd":   "clangd-index-cache", // C/C++ language server indexes
+	".cache/deno":     "deno-cache",         // Deno runtime and package storage
+	".cache/zig":      "zig-cache",          // Zig compiler global artifact store
+	".cache/supabase": "supabase-local-dev", // Local database dev caches
+	".cache/hardhat":  "hardhat-evm-cache",  // Ethereum/Web3 smart contract dev cache
 
 	// Additional package tools
-	".composer/cache":                    "php-composer-cache",         // PHP package dependency cache
-	".bower":                             "bower-cache",                // Legacy frontend package manager cache
+	".composer/cache": "php-composer-cache", // PHP package dependency cache
+	".bower":          "bower-cache",        // Legacy frontend package manager cache
+	// Global IDE & CLI Tool caches
+	".azure/cliextensions":        "azure-cli-extensions",       // Azure CLI extensions cache
+	".vscode/extensions":          "vscode-extensions",          // VS Code downloaded extensions
+	".antigravity/extensions":     "antigravity-extensions",     // Antigravity downloaded extensions
+	".antigravity-ide/extensions": "antigravity-ide-extensions", // Antigravity IDE extensions
 }
-
 
 // LangCacheScanner reports the disk usage of global package-manager caches
 // stored under the user's home directory. Unlike DevJunkScanner and
