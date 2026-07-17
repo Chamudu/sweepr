@@ -32,11 +32,12 @@ registry of things implementing one small interface.
 
 ```go
 type Item struct {
-    Path      string
-    Kind      string
-    SizeBytes int64
-    LastMod   time.Time
-    IsDir     bool
+    Path         string
+    DisplayName  string
+    Kind         string
+    SizeBytes    int64
+    LastMod      time.Time
+    ResourceType ResourceType
 }
 
 type Scanner interface {
@@ -44,6 +45,12 @@ type Scanner interface {
     Scan(root string) ([]Item, error)
 }
 ```
+
+`ResourceType` distinguishes files, directories, and non-filesystem resources
+such as Docker images. This prevents a Docker ID from being passed to
+`os.Remove` merely because it is not a directory. `DisplayName` is optional
+human-readable text for resources whose stable identifier is not useful in a
+report.
 
 Every junk-finder (dev dirs, language caches, OS junk files, and later
 Docker) implements this. Adding a new junk type later = write one new
@@ -68,7 +75,8 @@ main.go
   │
   └─ if --delete:
          confirm (unless --yes)
-         for each item: os.RemoveAll or os.Remove
+         for each supported resource: choose deletion by ResourceType
+         skip resource types without an implemented deletion mechanism
          print freed-space summary
 ```
 

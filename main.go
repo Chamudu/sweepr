@@ -55,6 +55,26 @@ func formatTime(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
+// displayTarget returns the human-friendly label when a scanner provides one,
+// otherwise it falls back to the filesystem path used by existing scanners.
+func displayTarget(item scanner.Item) string {
+	if item.DisplayName != "" {
+		return item.DisplayName
+	}
+	return item.Path
+}
+
+// supportsDeletion reports whether sweepr currently has a safe deletion
+// implementation for this resource type. Unknown types fail closed.
+func supportsDeletion(item scanner.Item) bool {
+	switch item.ResourceType {
+	case scanner.ResourceDirectory, scanner.ResourceFile:
+		return true
+	default:
+		return false
+	}
+}
+
 func contains(list []string, target string) bool {
 	for _, item := range list {
 		if item == target {
@@ -150,22 +170,28 @@ func deleteJunk(filteredItems []scanner.Item) {
 
 	for _, item := range filteredItems {
 		var err error
+		target := displayTarget(item)
 
-		if item.IsDir {
+		switch item.ResourceType {
+		case scanner.ResourceDirectory:
 			err = os.RemoveAll(item.Path)
-		} else {
+		case scanner.ResourceFile:
 			err = os.Remove(item.Path)
+		default:
+			fmt.Printf("Skipped unsupported resource type %q: %s\n", item.ResourceType, target)
+			failedCount++
+			continue
 		}
 
 		if err != nil {
-			fmt.Printf("Error deleting %s: %v\n", item.Path, err)
+			fmt.Printf("Error deleting %s: %v\n", target, err)
 			failedCount++
 			continue
 		}
 
 		deletedCount++
 		freedBytes += item.SizeBytes
-		fmt.Printf("Deleted: %s (%s)\n", item.Path, formatSize(item.SizeBytes))
+		fmt.Printf("Deleted: %s (%s)\n", target, formatSize(item.SizeBytes))
 	}
 
 	// Finaly Summary
@@ -332,7 +358,7 @@ func main() {
 	for _, item := range filteredItems {
 		fmt.Printf("\t%-22s %-40s %10s Last Mod: %s\n",
 			item.Kind,
-			item.Path,
+			displayTarget(item),
 			formatSize(item.SizeBytes),
 			formatTime(item.LastMod),
 		)
@@ -353,19 +379,37 @@ func main() {
 		return
 	}
 
+	// Only offer resources with an implemented deletion mechanism. This keeps
+	// report-only resource types, such as Docker images, out of confirmation and
+	// filesystem deletion while the generic switch in deleteJunk remains a final guard.
+	deletionCandidates := make([]scanner.Item, 0, len(filteredItems))
+	for _, item := range filteredItems {
+		if supportsDeletion(item) {
+			deletionCandidates = append(deletionCandidates, item)
+			continue
+		}
+		fmt.Printf("Skipping %s: deletion is not supported for %q resources.\n",
+			displayTarget(item), item.ResourceType)
+	}
+
+	if len(deletionCandidates) == 0 {
+		fmt.Println("No supported items available for deletion.")
+		return
+	}
+
 	var itemsToDelete []scanner.Item
 	deleteAllRemaining := false
 
 	// Promt for confirmation unless --yess is passed
 	if *yesFlag {
 		// if yes passed, select all items
-		itemsToDelete = filteredItems
+		itemsToDelete = deletionCandidates
 	} else {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Println("\nInteractive Deletion Mode")
 		fmt.Println("------------------------------")
 
-		for i, item := range filteredItems {
+		for i, item := range deletionCandidates {
 			// If user chose `a` (all) previously, automatically select remaining items
 			if deleteAllRemaining {
 				itemsToDelete = append(itemsToDelete, item)
@@ -373,7 +417,7 @@ func main() {
 			}
 
 			info := scanner.GetJunkInfo(item.Kind)
-			fmt.Printf("\n[%d/%d] Path: %s\n", i+1, len(filteredItems), item.Path)
+			fmt.Printf("\n[%d/%d] Target: %s\n", i+1, len(deletionCandidates), displayTarget(item))
 			fmt.Printf("	Kind: %s (%s)\n", item.Kind, formatSize(item.SizeBytes))
 			fmt.Printf("	Description: %s\n", info.Description)
 

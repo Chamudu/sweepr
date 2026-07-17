@@ -101,11 +101,11 @@ func (s *LangCacheScanner) Scan(root string) ([]Item, error) {
 
 		size, modTime, _ := dirStats(absPath)
 		items = append(items, Item{
-			Path:      absPath,
-			Kind:      kind,
-			SizeBytes: size,
-			LastMod:   modTime,
-			IsDir:     true,
+			Path:         absPath,
+			Kind:         kind,
+			SizeBytes:    size,
+			LastMod:      modTime,
+			ResourceType: ResourceDirectory,
 		})
 	}
 

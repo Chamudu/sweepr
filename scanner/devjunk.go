@@ -113,11 +113,11 @@ func (s *DevJunkScanner) Scan(root string) ([]Item, error) {
 			size, modTime, _ := dirStats(path)
 
 			items = append(items, Item{
-				Path:      path,
-				Kind:      kind,
-				SizeBytes: size,
-				LastMod:   modTime,
-				IsDir:     true,
+				Path:         path,
+				Kind:         kind,
+				SizeBytes:    size,
+				LastMod:      modTime,
+				ResourceType: ResourceDirectory,
 			})
 
 			// Skip descending into this directory — we've already counted it as a

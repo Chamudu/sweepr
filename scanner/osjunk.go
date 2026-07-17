@@ -69,11 +69,11 @@ func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
 		if osJunkFiles[d.Name()] {
 			size, modTime, _ := fileStats(path) // fileStats: single-file stat, no walk needed
 			items = append(items, Item{
-				Path:      path,
-				Kind:      "os-junk",
-				SizeBytes: size,
-				LastMod:   modTime,
-				IsDir:     false,
+				Path:         path,
+				Kind:         "os-junk",
+				SizeBytes:    size,
+				LastMod:      modTime,
+				ResourceType: ResourceFile,
 			})
 		}
 

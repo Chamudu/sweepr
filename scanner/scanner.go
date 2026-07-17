@@ -6,14 +6,27 @@ package scanner
 
 import "time"
 
-// Item represents one piece of reclaimable disk space: a directory
-// (node_modules, __pycache__, ~/.npm) or a single junk file (.DS_Store).
+// ResourceType identifies what an Item represents and therefore which removal
+// mechanism, if any, is safe to use for it.
+type ResourceType string
+
+const (
+	ResourceFile        ResourceType = "file"
+	ResourceDirectory   ResourceType = "directory"
+	ResourceDockerImage ResourceType = "docker-image"
+)
+
+// Item represents one reclaimable resource found by a scanner. Path is the
+// filesystem location for file-backed items; newer non-filesystem scanners may
+// temporarily use it as a stable resource identifier. DisplayName is optional
+// user-facing text for resources whose identifier is not meaningful to people.
 type Item struct {
-	Path      string    `json:"path"`
-	Kind      string    `json:"kind"`
-	SizeBytes int64     `json:"size_bytes"`
-	LastMod   time.Time `json:"last_mod"`
-	IsDir     bool      `json:"is_dir"`
+	Path         string       `json:"path"`
+	DisplayName  string       `json:"display_name,omitempty"`
+	Kind         string       `json:"kind"`
+	SizeBytes    int64        `json:"size_bytes"`
+	LastMod      time.Time    `json:"last_mod"`
+	ResourceType ResourceType `json:"resource_type"`
 }
 
 // Scanner is the interface every junk-finder implements.
@@ -32,6 +45,7 @@ func All() []Scanner {
 		&DevJunkScanner{},
 		&LangCacheScanner{},
 		&OSJunkScanner{},
+		&DockerScanner{},
 	}
 }
 
@@ -108,6 +122,11 @@ func GetJunkInfo(kind string) JunkInfo {
 		return JunkInfo{
 			Description: "Android Virtual Device saved boot states.",
 			Warning:     "The emulator will perform a slow cold-boot next time it starts.",
+		}
+	case "docker-image":
+		return JunkInfo{
+			Description: "Dangling Docker image no longer referenced by a repository tag.",
+			Warning:     "Report only: Docker image deletion is not implemented yet.",
 		}
 	case "clangd-index-cache", "deno-cache", "zig-cache", "supabase-local-dev", "hardhat-evm-cache":
 		return JunkInfo{

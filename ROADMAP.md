@@ -42,7 +42,16 @@
 - [x] **Test it:** `sweepr -json | jq .` and confirm it's clean.
 
 ## Phase 7 (stretch) — Docker leftovers
-- [ ] New `DockerScanner` implementing the same `Scanner` interface, shelling out to `docker system df` / `docker image ls -f dangling=true` (`os/exec`).
+- [x] Add a report-only `DockerScanner` implementing the existing `Scanner`
+      interface and querying dangling images through `os/exec`.
+- [x] Inspect images through Docker's structured JSON output to report exact
+      byte sizes, creation times, and friendly short IDs.
+- [x] Treat Docker as an optional integration and skip cleanly when its
+      executable is not installed.
+- [x] Add explicit resource types so Docker IDs cannot reach filesystem
+      deletion (`os.Remove` / `os.RemoveAll`).
+- [ ] Add Docker-aware deletion through the Docker CLI with the same explicit
+      confirmation and failure-reporting guarantees as filesystem deletion.
 
 ## Phase 8 (stretch) — Concurrency & Walking Optimizations
 - [ ] Run all scanners concurrently with goroutines + `sync.WaitGroup`, collect results via a channel or a mutex-protected slice.

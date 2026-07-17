@@ -62,7 +62,8 @@ The tool uses a registry-based plugin pattern:
 
 ## Project Status
 
-This project is in active development. See [docs/ROADMAP.md](docs/ROADMAP.md) for planned phases.
+This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned phases.
 
-Current: **Phase 5** — Deletion & Safety Rules (`--delete`, confirmation prompts).  
-Next: **Phase 6** — JSON Output (`--json` flag for machine readability).
+Current: **Phase 7** — report-only Docker dangling-image scanning is complete.
+
+Next: Docker-aware deletion with the existing confirmation and safety model.
