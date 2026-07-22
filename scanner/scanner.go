@@ -36,7 +36,7 @@ type Scanner interface {
 
 	// Scan walks root (or fixed system paths, for scanners like LangCacheScanner
 	// that aren't project-relative) and returns candidate Items.
-	Scan(root string) ([]Item, error)
+	Scan(root string, options ScanOptions) ([]Item, error)
 }
 
 // All returns every built-in scanner.

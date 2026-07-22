@@ -17,6 +17,19 @@ import (
 	"unicode"
 )
 
+// stringListFlag implements flag.Value so --exclude can be supplied more than
+// once without requiring fragile comma parsing in filesystem paths.
+type stringListFlag []string
+
+func (f *stringListFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *stringListFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
+
 // formatSize converts a raw byte count into a human-readable string with the
 // appropriate unit (B, KB, MB, GB, TB, PB, EB). Uses binary units (1024-based),
 // which is the standard for disk space.
@@ -194,11 +207,21 @@ func header(root string, scanners []scanner.Scanner) {
 	fmt.Printf("\nStarting sweepr scan..\n")
 	fmt.Printf("\nTarget Directory: %s\n", root)
 
-	// Show scope info
-	if root == "." || root == home {
+	// Derive scope from the scanners that will actually run instead of relying
+	// on whether the same root was spelled as "." or as an absolute path.
+	hasProjectScanner := hasScanner(scanners, "dev-junk") || hasScanner(scanners, "os-junk")
+	hasGlobalCache := hasScanner(scanners, "lang-cache")
+	switch {
+	case hasProjectScanner && hasGlobalCache:
 		fmt.Printf("\nScope: \tProject files + Global user caches (%s)\n", home)
-	} else {
-		fmt.Printf("\nScope: \tSubfolder scan (Global caches ignored for safety)\n")
+	case hasGlobalCache:
+		fmt.Printf("\nScope: \tGlobal user caches (%s)\n", home)
+	case hasProjectScanner:
+		fmt.Printf("\nScope: \tProject files (Global user caches excluded)\n")
+	case len(scanners) > 0:
+		fmt.Printf("\nScope: \tSelected global resources (Global user caches excluded)\n")
+	default:
+		fmt.Printf("\nScope: \tNo scanners selected\n")
 	}
 
 	// Show active scanners list
@@ -208,6 +231,15 @@ func header(root string, scanners []scanner.Scanner) {
 	}
 	fmt.Printf("Scanners: \t%s\n\n", strings.Join(activeNames, ", "))
 
+}
+
+func hasScanner(scanners []scanner.Scanner, name string) bool {
+	for _, candidate := range scanners {
+		if candidate.Name() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -220,6 +252,10 @@ func main() {
 	deleteFlag := flag.Bool("delete", false, "Delete found juck items")
 	yesFlag := flag.Bool("yes", false, "skip confirmation prompt (Dangerous!)")
 	jsonFlag := flag.Bool("json", false, "format output as JSON")
+	noProgress := flag.Bool("no-progress", false, "disable interactive scan progress")
+	includeGlobal := flag.Bool("include-global", false, "include global language caches with an explicit root")
+	var excludes stringListFlag
+	flag.Var(&excludes, "exclude", "exclude a path from project scanning (repeatable)")
 
 	flag.Parse()
 
@@ -242,7 +278,8 @@ func main() {
 	// root is the directory to scan for project-level junk (dev-junk, os-junk).
 	// LangCacheScanner ignores this value and always checks $HOME.
 	root := "."
-	if flag.NArg() > 0 {
+	rootProvided := flag.NArg() > 0
+	if rootProvided {
 		root = flag.Arg(0)
 	}
 
@@ -250,11 +287,18 @@ func main() {
 	if realRoot, err := filepath.EvalSymlinks(root); err == nil {
 		root = realRoot
 	}
-	// Automatically skip global cache if targeting a specific sub folder
-	home, _ := os.UserHomeDir()
-	effectiveSkip := *skip
 
-	if root != "." && root != home {
+	scanOptions, err := scanner.NewScanOptions(root, []string(excludes))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid exclude path: %v\n", err)
+		os.Exit(1)
+	}
+	// An explicit root normally means the user intends a scoped project scan.
+	// Global caches require a separate opt-in because LangCacheScanner ignores root.
+	effectiveSkip := *skip
+	langCacheExplicitlySelected := *only != "" && contains(strings.Split(*only, ","), "lang-cache")
+
+	if rootProvided && !*includeGlobal && !langCacheExplicitlySelected {
 		if effectiveSkip == "" {
 			effectiveSkip = "lang-cache"
 		} else if !strings.Contains(effectiveSkip, "lang-cache") {
@@ -283,7 +327,14 @@ func main() {
 			fmt.Printf("\nRunning scanner: %s...\n", s.Name())
 		}
 
-		items, err := s.Scan(root)
+		scanStarted := time.Now()
+		progress := newProgressRenderer(
+			s.Name(),
+			!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
+		)
+		items, err := s.Scan(root, scanOptions.WithProgress(progress.Update))
+		progress.Finish()
+		scanDuration := time.Since(scanStarted).Round(time.Millisecond)
 		if err != nil {
 			// A scanner error is non-fatal: report it and continue with the rest.
 			if !*jsonFlag {
@@ -292,6 +343,10 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Error running scanner %s: %v\n", s.Name(), err)
 			}
 			continue
+		}
+
+		if !*jsonFlag {
+			fmt.Printf("Completed scanner: %s (%s, %d items)\n", s.Name(), scanDuration, len(items))
 		}
 
 		allItems = append(allItems, items...)

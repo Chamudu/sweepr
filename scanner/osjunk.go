@@ -31,8 +31,10 @@ func (s *OSJunkScanner) Name() string {
 // It skips .git directories and symbolic links for the same reasons as
 // DevJunkScanner. Because the targets are files (not directories), it uses
 // fileStats instead of dirStats.
-func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
+func (s *OSJunkScanner) Scan(root string, options ScanOptions) ([]Item, error) {
 	var items []Item
+	var entriesScanned int64
+	var bytesFound int64
 
 	home, _ := os.UserHomeDir()      // Fetch home directory once
 	absRoot, _ := filepath.Abs(root) // Get absolute path of the scan root
@@ -41,6 +43,20 @@ func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
 		// Skip any entry we cannot read.
 		if err != nil {
 			return nil
+		}
+
+		entriesScanned++
+		if entriesScanned%256 == 0 {
+			options.ReportProgress(Progress{
+				Path:           path,
+				EntriesScanned: entriesScanned,
+				ItemsFound:     len(items),
+				BytesFound:     bytesFound,
+			})
+		}
+
+		if d.IsDir() && (options.ShouldExclude(path) || IsProtectedSnapshotDir(path)) {
+			return filepath.SkipDir
 		}
 
 		// Skip top-level global tool caches inside the home folder to avoid leaks
@@ -68,6 +84,7 @@ func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
 		// if the name is not in the map, so no "comma ok" idiom is needed here.
 		if osJunkFiles[d.Name()] {
 			size, modTime, _ := fileStats(path) // fileStats: single-file stat, no walk needed
+			bytesFound += size
 			items = append(items, Item{
 				Path:         path,
 				Kind:         "os-junk",
@@ -75,9 +92,22 @@ func (s *OSJunkScanner) Scan(root string) ([]Item, error) {
 				LastMod:      modTime,
 				ResourceType: ResourceFile,
 			})
+			options.ReportProgress(Progress{
+				Path:           path,
+				EntriesScanned: entriesScanned,
+				ItemsFound:     len(items),
+				BytesFound:     bytesFound,
+			})
 		}
 
 		return nil
+	})
+
+	options.ReportProgress(Progress{
+		Path:           root,
+		EntriesScanned: entriesScanned,
+		ItemsFound:     len(items),
+		BytesFound:     bytesFound,
 	})
 
 	return items, err

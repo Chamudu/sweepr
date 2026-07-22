@@ -43,7 +43,7 @@ func (s *DockerScanner) Name() string {
 
 // Scan finds dangling Docker images. Docker resources are global, so the
 // filesystem root required by the Scanner interface is intentionally unused.
-func (s *DockerScanner) Scan(_ string) ([]Item, error) {
+func (s *DockerScanner) Scan(_ string, _ ScanOptions) ([]Item, error) {
 	// Docker is a stretch integration, so its executable is optional. A machine
 	// without Docker should still be able to run every filesystem scanner.
 	if _, err := exec.LookPath("docker"); err != nil {

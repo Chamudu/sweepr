@@ -44,6 +44,8 @@ For each candidate item, report:
 - Never descend *into* a directory you've already flagged as junk (e.g.
   don't report nested `node_modules` inside a `node_modules` you're about
   to delete).
+- Generic directory names such as `build`, `dist`, and `target` require nearby
+  ecosystem marker files before they are classified as disposable output.
 - Skip `.git` directories entirely (don't walk them, don't flag them).
 - **Symlink Handling:** Skip following symbolic links during traversal to avoid infinite loops and deleting files outside the scanning root.
 - **Lock & Permission Handling:** Handle permission errors by skipping the entry, not crashing the scan. Handle locked files during deletion by logging the error, tracking it, and continuing to clean remaining items.
@@ -61,6 +63,11 @@ For each candidate item, report:
 - `--min-size <e.g. 10MB>` — ignore anything smaller.
 - `--min-age <days>` — ignore anything modified more recently than this
   (protects active projects you're still working in).
+- `--exclude <path>` — prune a project subtree before traversal. May be
+  repeated; relative paths are resolved from the selected scan root.
+- `--include-global` — include fixed `$HOME` language-cache locations when an
+  explicit project root is supplied. Global caches remain included when the
+  root is omitted or `--only lang-cache` is explicitly selected.
 
 ### 5. Deletion
 - `--delete` performs the removal (directories: `os.RemoveAll`, files:

@@ -28,6 +28,10 @@
 - [x] `--only` / `--skip` (comma-separated kind filters).
 - [x] `--min-size` (parse strings like `"10MB"` — you'll want a small parser function; this is a good use of `strconv` + a switch on suffix).
 - [x] `--min-age` (days since `LastMod`, using `time.Since`).
+- [x] Repeatable `--exclude` paths with traversal-time pruning and automatic
+      protection for Timeshift / `.snapshots` backup trees.
+- [x] Explicit `--include-global` scope control for fixed `$HOME` caches,
+      replacing the ambiguous `"."` versus absolute-root behavior.
 
 ## Phase 5 — Deletion & Safety (the dangerous part — go slow)
 - [x] `--delete` flag, off by default.
@@ -54,6 +58,10 @@
       confirmation and failure-reporting guarantees as filesystem deletion.
 
 ## Phase 8 (stretch) — Concurrency & Walking Optimizations
+- [x] Add per-scanner duration reporting and throttled interactive progress
+      without contaminating JSON or redirected output.
+- [x] Replace name-only matching for ambiguous build directories with bounded
+      project-marker validation to reduce destructive false positives.
 - [ ] Run all scanners concurrently with goroutines + `sync.WaitGroup`, collect results via a channel or a mutex-protected slice.
 - [ ] Implement **Single-Pass Walking**: refactor the walkers to do a single directory traversal, passing paths to a matcher routine to avoid redundant disk I/O.
 

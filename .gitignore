@@ -8,3 +8,6 @@ sweepr
 
 # test env
 test_env
+
+# local learning notes (intentionally not versioned)
+.learning/

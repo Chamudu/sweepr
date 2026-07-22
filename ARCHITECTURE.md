@@ -43,7 +43,7 @@ type Item struct {
 
 type Scanner interface {
     Name() string
-    Scan(root string) ([]Item, error)
+    Scan(root string, options ScanOptions) ([]Item, error)
 }
 ```
 
@@ -52,6 +52,31 @@ such as Docker images. This prevents a Docker ID from being passed to
 `os.Remove` merely because it is not a directory. `DisplayName` is optional
 human-readable text for resources whose stable identifier is not useful in a
 report.
+
+`ScanOptions` carries normalized exclusion paths shared by project-relative
+walkers. Walk callbacks return `filepath.SkipDir` as soon as they reach an
+excluded or protected snapshot directory. Pruning at traversal time avoids the
+I/O, false positives, and deletion risk of scanning first and filtering later.
+
+`ScanOptions` also carries an optional `ProgressFunc`. Walkers publish
+point-in-time entry, finding, byte, and path counters without knowing anything
+about terminal presentation. The CLI throttles rendering to ten updates per
+second on interactive stderr, clears the temporary line before permanent
+output, and disables progress for JSON or redirected streams. A percentage is
+not reported because determining the total entry count would require a second
+full filesystem traversal.
+
+Scanner scope is based on user intent, not path spelling. Omitting the root
+includes global language caches; supplying an explicit root excludes them by
+default; `--include-global` opts them back into a mixed scan. An explicit
+`--only lang-cache` selection also runs because it is not an accidental global
+side effect.
+
+Developer-junk patterns carry a confidence policy. Ecosystem-specific names
+such as `node_modules` are direct matches, while ambiguous names (`build`,
+`dist`, and `target`) require a nearby project marker. Marker search is bounded
+to three ancestors and never crosses the selected scan root, preventing an
+unrelated marker high in a broad tree from validating false positives.
 
 Every junk-finder (dev dirs, language caches, OS junk files, and Docker)
 implements this. Adding a new junk type later = write one new
@@ -96,6 +121,9 @@ To scan project directories efficiently, the walk implementation can follow one 
 - **Symlink Loops:** To prevent infinite directory loops or walking outside the target directory root, symlinks (`os.ModeSymlink`) must not be followed.
 - **Lock Files:** Files that are actively locked by running processes (e.g., node servers or IDE builders) should not crash the deletion phase. The deletion loop should log the error and proceed to clean other items.
 - **Permission Denied:** Directories requiring elevated privileges (sudo) should be skipped gracefully during walk operations without interrupting the entire scan.
+- **Snapshot & User Exclusions:** Timeshift snapshot roots and `.snapshots`
+  directories are pruned automatically. Repeatable `--exclude` paths are
+  normalized relative to the scan root and matched on path-component boundaries.
 
 ## Concurrency (for later, not v1)
 Once the sequential scanning is solid, a natural speedup is to run scans concurrently using `sync.WaitGroup` + goroutines. Since global caches and project directories reside in independent parts of the filesystem, concurrency will leverage modern multi-core NVMe drives effectively.

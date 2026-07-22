@@ -68,7 +68,7 @@ func (s *LangCacheScanner) Name() string {
 // We use os.Stat (follows symlinks) rather than os.Lstat here because some
 // package managers (e.g., pnpm) store the real cache elsewhere and create a
 // symlink at the well-known path. Following the symlink gives us the true size.
-func (s *LangCacheScanner) Scan(root string) ([]Item, error) {
+func (s *LangCacheScanner) Scan(root string, options ScanOptions) ([]Item, error) {
 	// os.UserHomeDir reads $HOME on Linux/macOS and %USERPROFILE% on Windows.
 	// Hardcoding a path like "/home/chamu" would break on other machines and OSes.
 	home, err := os.UserHomeDir()

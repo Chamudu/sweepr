@@ -31,6 +31,15 @@ go build -o sweepr
 
 # Skip a scanner
 ./sweepr --skip lang-cache
+
+# Exclude one or more subtrees from project scanning
+./sweepr --exclude /path/to/backups --exclude vendor/archive /path/to/projects
+
+# Disable the interactive progress line
+./sweepr --no-progress /path/to/projects
+
+# Include global language caches while scanning an explicit project root
+./sweepr --include-global /path/to/projects
 ```
 
 ## What It Scans
@@ -40,6 +49,23 @@ go build -o sweepr
 | **Dev Junk** | `dev-junk` | Build artifacts inside project trees: `node_modules`, `dist`, `build`, `.next`, `target`, `__pycache__`, `.venv`, `venv`, `.pytest_cache`, `.poetry` |
 | **OS Junk** | `os-junk` | Files the OS drops into every directory: `.DS_Store` (macOS), `Thumbs.db`, `desktop.ini` (Windows) |
 | **Lang Cache** | `lang-cache` | Global package manager caches under `$HOME`: npm, pip, cargo, Go modules, Go build cache, yarn, pnpm, Gradle |
+
+Project-relative scanners automatically prune Timeshift `snapshots` trees and
+directories named `.snapshots`. Use repeatable `--exclude` flags for other
+backup, archive, generated, or mounted paths that should never be traversed.
+
+Ambiguous directory names such as `build`, `dist`, and Rust `target` are only
+reported when nearby project markers confirm their ecosystem context. This
+prevents name-only matches in SDK sources and ordinary source trees.
+
+Interactive scans show a throttled progress line with the active scanner,
+entries visited, findings, bytes found, elapsed time, and current path. Progress
+is written to stderr and automatically disabled for JSON or redirected output.
+
+When no root is supplied, global language caches are included. Supplying an
+explicit root scopes the default scan to project-relative scanners unless
+`--include-global` is present. Explicitly selecting `--only lang-cache` also
+runs that scanner because the user's intent is unambiguous.
 
 ## Platform Support
 
