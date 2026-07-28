@@ -79,6 +79,8 @@ func (s *LangCacheScanner) Scan(root string, options ScanOptions) ([]Item, error
 	}
 
 	var items []Item
+	var entriesScanned int64
+	var bytesFound int64
 
 	for relPath, kind := range cacheRelPaths {
 		// filepath.Join correctly handles OS path separators and cleans up any
@@ -99,7 +101,21 @@ func (s *LangCacheScanner) Scan(root string, options ScanOptions) ([]Item, error
 			continue
 		}
 
-		size, modTime, _ := dirStats(absPath)
+		baseEntries := entriesScanned
+		baseBytes := bytesFound
+		size, modTime, measuredEntries, _ := dirStatsWithProgress(
+			absPath,
+			func(currentPath string, localEntries, localBytes int64) {
+				options.ReportProgress(Progress{
+					Path:           currentPath,
+					EntriesScanned: baseEntries + localEntries,
+					ItemsFound:     len(items),
+					BytesFound:     baseBytes + localBytes,
+				})
+			},
+		)
+		entriesScanned += measuredEntries
+		bytesFound += size
 		items = append(items, Item{
 			Path:         absPath,
 			Kind:         kind,
@@ -107,7 +123,20 @@ func (s *LangCacheScanner) Scan(root string, options ScanOptions) ([]Item, error
 			LastMod:      modTime,
 			ResourceType: ResourceDirectory,
 		})
+		options.ReportProgress(Progress{
+			Path:           absPath,
+			EntriesScanned: entriesScanned,
+			ItemsFound:     len(items),
+			BytesFound:     bytesFound,
+		})
 	}
+
+	options.ReportProgress(Progress{
+		Path:           home,
+		EntriesScanned: entriesScanned,
+		ItemsFound:     len(items),
+		BytesFound:     bytesFound,
+	})
 
 	return items, nil
 }

@@ -2,8 +2,6 @@ package scanner
 
 import (
 	"io/fs"
-	"os"
-	"path/filepath"
 )
 
 // osJunkFiles is used as a set of file names that operating systems scatter
@@ -22,6 +20,8 @@ var osJunkFiles = map[string]bool{
 // targets single small files and uses fileStats (not dirStats) to measure them.
 type OSJunkScanner struct{}
 
+var _ ProjectScanner = (*OSJunkScanner)(nil)
+
 // Name satisfies the Scanner interface.
 func (s *OSJunkScanner) Name() string {
 	return "os-junk"
@@ -32,83 +32,19 @@ func (s *OSJunkScanner) Name() string {
 // DevJunkScanner. Because the targets are files (not directories), it uses
 // fileStats instead of dirStats.
 func (s *OSJunkScanner) Scan(root string, options ScanOptions) ([]Item, error) {
-	var items []Item
-	var entriesScanned int64
-	var bytesFound int64
+	return ScanProject(root, options, []ProjectScanner{s})
+}
 
-	home, _ := os.UserHomeDir()      // Fetch home directory once
-	absRoot, _ := filepath.Abs(root) // Get absolute path of the scan root
+// MatchProjectEntry classifies individual OS-generated files. It never asks
+// the shared walker to skip a directory because its targets are files.
+func (s *OSJunkScanner) MatchProjectEntry(_, path string, entry fs.DirEntry) (Item, bool, bool) {
+	if entry.IsDir() || !osJunkFiles[entry.Name()] {
+		return Item{}, false, false
+	}
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		// Skip any entry we cannot read.
-		if err != nil {
-			return nil
-		}
-
-		entriesScanned++
-		if entriesScanned%256 == 0 {
-			options.ReportProgress(Progress{
-				Path:           path,
-				EntriesScanned: entriesScanned,
-				ItemsFound:     len(items),
-				BytesFound:     bytesFound,
-			})
-		}
-
-		if d.IsDir() && (options.ShouldExclude(path) || IsProtectedSnapshotDir(path)) {
-			return filepath.SkipDir
-		}
-
-		// Skip top-level global tool caches inside the home folder to avoid leaks
-		absPath, _ := filepath.Abs(path)
-		if d.IsDir() && absPath != absRoot && ShouldSkipGlobalCacheDir(path, home) {
-			return filepath.SkipDir
-		}
-
-		// Skip .git before the symlink guard so we do not stat Git-internal paths.
-		// We use d.IsDir() here because .git must be a directory to skip properly.
-		if d.IsDir() && d.Name() == ".git" {
-			return filepath.SkipDir
-		}
-		// Symlink guard: Check the file type bits directly in memory using the fs.DirEntry.
-		if d.Type()&fs.ModeSymlink != 0 {
-			return nil
-		}
-
-		// We only want files — directories cannot be OS junk files.
-		if d.IsDir() {
-			return nil
-		}
-
-		// Check the file name against our set. osJunkFiles[name] returns false
-		// if the name is not in the map, so no "comma ok" idiom is needed here.
-		if osJunkFiles[d.Name()] {
-			size, modTime, _ := fileStats(path) // fileStats: single-file stat, no walk needed
-			bytesFound += size
-			items = append(items, Item{
-				Path:         path,
-				Kind:         "os-junk",
-				SizeBytes:    size,
-				LastMod:      modTime,
-				ResourceType: ResourceFile,
-			})
-			options.ReportProgress(Progress{
-				Path:           path,
-				EntriesScanned: entriesScanned,
-				ItemsFound:     len(items),
-				BytesFound:     bytesFound,
-			})
-		}
-
-		return nil
-	})
-
-	options.ReportProgress(Progress{
-		Path:           root,
-		EntriesScanned: entriesScanned,
-		ItemsFound:     len(items),
-		BytesFound:     bytesFound,
-	})
-
-	return items, err
+	return Item{
+		Path:         path,
+		Kind:         "os-junk",
+		ResourceType: ResourceFile,
+	}, true, false
 }

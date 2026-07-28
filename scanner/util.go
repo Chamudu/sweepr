@@ -19,13 +19,32 @@ import (
 // Note: dirStats only counts the size of regular files. Directory entries
 // themselves have no meaningful size on Linux/macOS.
 func dirStats(path string) (int64, time.Time, error) {
+	size, modTime, _, err := dirStatsWithProgress(path, nil)
+	return size, modTime, err
+}
+
+// dirStatsProgressFunc receives throttled snapshots while a directory tree is
+// measured. Counts are local to this one directory measurement; callers merge
+// them into scanner-wide progress.
+type dirStatsProgressFunc func(path string, entriesScanned, bytesFound int64)
+
+// dirStatsWithProgress is the observable form of dirStats. The extra entry
+// count lets callers account for descendants visited by this nested walk after
+// the outer project walker skips the already-measured directory.
+func dirStatsWithProgress(path string, report dirStatsProgressFunc) (int64, time.Time, int64, error) {
 	var totalSize int64
 	var maxMod time.Time
+	var entriesScanned int64
 
 	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
 		// Skip files/directories we cannot read rather than aborting the whole walk.
 		if err != nil {
 			return nil
+		}
+
+		entriesScanned++
+		if report != nil && entriesScanned%256 == 0 {
+			report(p, entriesScanned, totalSize)
 		}
 
 		// Directory entries do not contribute to disk usage — only their contents do.
@@ -51,7 +70,10 @@ func dirStats(path string) (int64, time.Time, error) {
 		return nil
 	})
 
-	return totalSize, maxMod, err
+	if report != nil {
+		report(path, entriesScanned, totalSize)
+	}
+	return totalSize, maxMod, entriesScanned, err
 }
 
 // fileStats returns the size and modification time of a single file using a

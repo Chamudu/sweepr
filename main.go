@@ -69,6 +69,13 @@ func formatTime(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
+func formatScanDuration(duration time.Duration) string {
+	if duration < time.Millisecond {
+		return "<1ms"
+	}
+	return duration.Round(time.Millisecond).String()
+}
+
 // displayTarget returns the human-friendly label when a scanner provides one,
 // otherwise it falls back to the filesystem path used by existing scanners.
 func displayTarget(item scanner.Item) string {
@@ -321,7 +328,51 @@ func main() {
 		header(root, scanners)
 	}
 
-	for _, s := range scanners {
+	// Project-relative scanners share one filesystem traversal. Independent
+	// scanners (global caches and Docker) keep their existing Scan behavior.
+	var projectScanners []scanner.ProjectScanner
+	var independentScanners []scanner.Scanner
+	for _, selected := range scanners {
+		if projectScanner, ok := selected.(scanner.ProjectScanner); ok {
+			projectScanners = append(projectScanners, projectScanner)
+			continue
+		}
+		independentScanners = append(independentScanners, selected)
+	}
+
+	if len(projectScanners) > 0 {
+		projectNames := make([]string, 0, len(projectScanners))
+		for _, projectScanner := range projectScanners {
+			projectNames = append(projectNames, projectScanner.Name())
+		}
+
+		if !*jsonFlag {
+			fmt.Printf("\nRunning shared project scan: %s...\n", strings.Join(projectNames, ", "))
+		}
+
+		scanStarted := time.Now()
+		progress := newProgressRenderer(
+			"project",
+			!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
+		)
+		items, err := scanner.ScanProject(root, scanOptions.WithProgress(progress.Update), projectScanners)
+		progress.Finish()
+		scanDuration := time.Since(scanStarted)
+		if err != nil {
+			if !*jsonFlag {
+				fmt.Printf("Error running shared project scan: %v\n", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "Error running shared project scan: %v\n", err)
+			}
+		} else {
+			if !*jsonFlag {
+				fmt.Printf("Completed shared project scan (%s, %d items)\n", formatScanDuration(scanDuration), len(items))
+			}
+			allItems = append(allItems, items...)
+		}
+	}
+
+	for _, s := range independentScanners {
 
 		if !*jsonFlag {
 			fmt.Printf("\nRunning scanner: %s...\n", s.Name())
@@ -334,7 +385,7 @@ func main() {
 		)
 		items, err := s.Scan(root, scanOptions.WithProgress(progress.Update))
 		progress.Finish()
-		scanDuration := time.Since(scanStarted).Round(time.Millisecond)
+		scanDuration := time.Since(scanStarted)
 		if err != nil {
 			// A scanner error is non-fatal: report it and continue with the rest.
 			if !*jsonFlag {
@@ -346,7 +397,7 @@ func main() {
 		}
 
 		if !*jsonFlag {
-			fmt.Printf("Completed scanner: %s (%s, %d items)\n", s.Name(), scanDuration, len(items))
+			fmt.Printf("Completed scanner: %s (%s, %d items)\n", s.Name(), formatScanDuration(scanDuration), len(items))
 		}
 
 		allItems = append(allItems, items...)

@@ -61,11 +61,17 @@ prevents name-only matches in SDK sources and ordinary source trees.
 Interactive scans show a throttled progress line with the active scanner,
 entries visited, findings, bytes found, elapsed time, and current path. Progress
 is written to stderr and automatically disabled for JSON or redirected output.
+Large dependency folders and global language caches continue updating this line
+while their exact sizes are measured.
 
 When no root is supplied, global language caches are included. Supplying an
 explicit root scopes the default scan to project-relative scanners unless
 `--include-global` is present. Explicitly selecting `--only lang-cache` also
 runs that scanner because the user's intent is unambiguous.
+
+The developer-junk and OS-junk classifiers share one project filesystem walk.
+This avoids traversing large project trees twice while preserving standalone
+`--only dev-junk` and `--only os-junk` modes.
 
 ## Platform Support
 

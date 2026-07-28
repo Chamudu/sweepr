@@ -45,6 +45,11 @@ type Scanner interface {
     Name() string
     Scan(root string, options ScanOptions) ([]Item, error)
 }
+
+type ProjectScanner interface {
+    Scanner
+    MatchProjectEntry(root, path string, entry fs.DirEntry) (Item, bool, bool)
+}
 ```
 
 `ResourceType` distinguishes files, directories, and non-filesystem resources
@@ -66,11 +71,22 @@ output, and disables progress for JSON or redirected streams. A percentage is
 not reported because determining the total entry count would require a second
 full filesystem traversal.
 
+Directory measurement is observable through an optional callback in
+`dirStatsWithProgress`. This keeps progress moving while nested size walks
+measure large dependency and cache directories. The shared project walker owns
+measurement and merges nested counts into its totals; classifiers only identify
+resource type and kind.
+
 Scanner scope is based on user intent, not path spelling. Omitting the root
 includes global language caches; supplying an explicit root excludes them by
 default; `--include-global` opts them back into a mixed scan. An explicit
 `--only lang-cache` selection also runs because it is not an accidental global
 side effect.
+
+`DevJunkScanner` and `OSJunkScanner` additionally implement `ProjectScanner`.
+The CLI groups selected project scanners into one `ScanProject` traversal and
+offers each safe entry to their classifiers. Standalone `--only` modes use the
+same engine with one classifier, so traversal policy does not fork.
 
 Developer-junk patterns carry a confidence policy. Ecosystem-specific names
 such as `node_modules` are direct matches, while ambiguous names (`build`,
@@ -113,9 +129,10 @@ main.go
 ```
 
 ## Walking Strategy & Performance
-To scan project directories efficiently, the walk implementation can follow one of two strategies:
-1. **Multi-Pass Scan (Simpler, sequential):** Each scanner walks the target root independently (`filepath.WalkDir`). While easy to implement, this leads to redundant disk I/O, as the OS has to traverse the same directories multiple times.
-2. **Single-Pass Scan (Optimized):** A single master filesystem walker traverses the root directory and evaluates each path against the patterns of all active project-relative scanners in one pass. This significantly reduces disk seek times, especially on HDDs.
+Project-relative scanners use a single master `filepath.WalkDir` traversal.
+Traversal mechanics (pruning, symlinks, permissions, and progress) are applied
+once, while enabled classifiers independently evaluate each entry. Global cache
+and Docker scanners remain independent because they do not walk the project root.
 
 ## Traversal & Safety Safeguards
 - **Symlink Loops:** To prevent infinite directory loops or walking outside the target directory root, symlinks (`os.ModeSymlink`) must not be followed.

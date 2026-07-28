@@ -60,10 +60,13 @@
 ## Phase 8 (stretch) — Concurrency & Walking Optimizations
 - [x] Add per-scanner duration reporting and throttled interactive progress
       without contaminating JSON or redirected output.
+- [x] Keep progress responsive during nested directory-size measurement for
+      project artifacts and global language caches.
 - [x] Replace name-only matching for ambiguous build directories with bounded
       project-marker validation to reduce destructive false positives.
 - [ ] Run all scanners concurrently with goroutines + `sync.WaitGroup`, collect results via a channel or a mutex-protected slice.
-- [ ] Implement **Single-Pass Walking**: refactor the walkers to do a single directory traversal, passing paths to a matcher routine to avoid redundant disk I/O.
+- [x] Implement **Single-Pass Walking**: traverse project files once and pass
+      safe entries to all enabled project classifiers.
 
 ## Phase 9 (stretch) — UI & Safe Trash
 - Pick one once the CLI is solid:

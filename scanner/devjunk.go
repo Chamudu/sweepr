@@ -153,6 +153,8 @@ func pathWithinRoot(path, root string) bool {
 // double-count nested node_modules, for example).
 type DevJunkScanner struct{}
 
+var _ ProjectScanner = (*DevJunkScanner)(nil)
+
 // Name satisfies the Scanner interface. The returned string is used in output
 // headers and future --only/--skip CLI filters.
 func (s *DevJunkScanner) Name() string {
@@ -163,93 +165,24 @@ func (s *DevJunkScanner) Name() string {
 // Walking stops inside any recognised junk directory (filepath.SkipDir) so
 // nested junk (e.g. node_modules inside node_modules) is not double-reported.
 func (s *DevJunkScanner) Scan(root string, options ScanOptions) ([]Item, error) {
-	var items []Item
-	var entriesScanned int64
-	var bytesFound int64
+	return ScanProject(root, options, []ProjectScanner{s})
+}
 
-	home, _ := os.UserHomeDir()      // Fetch home dir once
-	absRoot, _ := filepath.Abs(root) // Gets absolute path of the scan root
+// MatchProjectEntry classifies a directory after the shared walker has already
+// applied traversal safety rules.
+func (s *DevJunkScanner) MatchProjectEntry(root, path string, entry fs.DirEntry) (Item, bool, bool) {
+	if !entry.IsDir() {
+		return Item{}, false, false
+	}
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		// Skip any entry we cannot read (permission denied, broken symlink target, etc.).
-		// Returning nil continues the walk instead of aborting it.
-		if err != nil {
-			return nil
-		}
+	kind, ok := matchDevJunk(path, root)
+	if !ok {
+		return Item{}, false, false
+	}
 
-		entriesScanned++
-		// Reporting every entry would make time formatting and terminal rendering
-		// part of the hot filesystem loop. Periodic snapshots stay responsive with
-		// substantially less overhead.
-		if entriesScanned%256 == 0 {
-			options.ReportProgress(Progress{
-				Path:           path,
-				EntriesScanned: entriesScanned,
-				ItemsFound:     len(items),
-				BytesFound:     bytesFound,
-			})
-		}
-
-		// Prune excluded and protected snapshot trees before inspecting their
-		// contents. SkipDir prevents both false reports and unnecessary disk I/O.
-		if d.IsDir() && (options.ShouldExclude(path) || IsProtectedSnapshotDir(path)) {
-			return filepath.SkipDir
-		}
-
-		// skip top-level global tool caches inside the home folder to avoid leaks
-		// Never skip root dir if user target it
-		absPath, _ := filepath.Abs(path)
-		if d.IsDir() && absPath != absRoot && ShouldSkipGlobalCacheDir(path, home) {
-			return filepath.SkipDir
-		}
-
-		// Symlink guard: Check the file type bits directly in memory using the fs.DirEntry.
-		if d.Type()&fs.ModeSymlink != 0 {
-			return nil
-		}
-
-		// We only care about directories — individual files cannot be junk targets.
-		if !d.IsDir() {
-			return nil
-		}
-
-		// Skip .git entirely. We never want to scan or report Git internals.
-		if d.Name() == ".git" {
-			return filepath.SkipDir
-		}
-
-		if kind, ok := matchDevJunk(path, root); ok {
-			size, modTime, _ := dirStats(path)
-			bytesFound += size
-
-			items = append(items, Item{
-				Path:         path,
-				Kind:         kind,
-				SizeBytes:    size,
-				LastMod:      modTime,
-				ResourceType: ResourceDirectory,
-			})
-			options.ReportProgress(Progress{
-				Path:           path,
-				EntriesScanned: entriesScanned,
-				ItemsFound:     len(items),
-				BytesFound:     bytesFound,
-			})
-
-			// Skip descending into this directory — we've already counted it as a
-			// whole, and we do not want to report junk nested inside junk.
-			return filepath.SkipDir
-		}
-
-		return nil
-	})
-
-	options.ReportProgress(Progress{
-		Path:           root,
-		EntriesScanned: entriesScanned,
-		ItemsFound:     len(items),
-		BytesFound:     bytesFound,
-	})
-
-	return items, err
+	return Item{
+		Path:         path,
+		Kind:         kind,
+		ResourceType: ResourceDirectory,
+	}, true, true
 }
