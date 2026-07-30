@@ -8,7 +8,8 @@ GitHub release, so complete every verification step first.
 1. Confirm the working tree is clean and `master` matches `origin/master`.
 2. Confirm CI is green on Linux, macOS, and Windows.
 3. Review `README.md`, `docs/GETTING_STARTED.md`, and safety wording.
-4. Confirm the repository license is present and correct.
+4. Confirm `LICENSE`, `COPYRIGHT`, `SOURCE.md`, and
+   `THIRD_PARTY_NOTICES.md` are present and correct.
 5. Run locally:
 
 ```sh
@@ -16,6 +17,7 @@ go test -race ./...
 go vet ./...
 go build -o /tmp/sweepr-release-check .
 /tmp/sweepr-release-check --version
+/tmp/sweepr-release-check --license
 ```
 
 ## Tagging
@@ -29,15 +31,19 @@ git push origin v0.1.0
 ```
 
 The release workflow tests the tagged commit, embeds the tag/commit/build date,
-builds six platform archives, writes SHA-256 checksums, and creates the GitHub
-release with generated notes.
+builds six platform archives plus an exact tagged-source archive, writes
+SHA-256 checksums, and creates the GitHub release with generated notes. Every
+binary archive also includes the license, copyright notice, source directions,
+third-party notices, README, and beginner guide.
 
 ## After publishing
 
 1. Download one archive and verify its checksum.
-2. Run `sweepr --version` from the downloaded archive.
+2. Inspect the archive for its documentation and run `sweepr --version` and
+   `sweepr --license`.
 3. Open the dashboard and perform a read-only scan.
-4. Confirm the release page contains all six archives and `checksums.txt`.
+4. Confirm the release page contains all six binary archives, the tagged-source
+   archive, and `checksums.txt`.
 
 ## Interactive workflow check
 

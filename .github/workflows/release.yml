@@ -49,16 +49,23 @@ jobs:
               binary="sweepr.exe"
             fi
 
+            package_root="staging/sweepr"
+            mkdir -p "${package_root}"
             CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" \
-              go build -trimpath -ldflags "${ldflags}" -o "staging/${binary}" .
+              go build -trimpath -ldflags "${ldflags}" -o "${package_root}/${binary}" .
+            cp LICENSE COPYRIGHT SOURCE.md THIRD_PARTY_NOTICES.md README.md "${package_root}/"
+            cp docs/GETTING_STARTED.md "${package_root}/GETTING_STARTED.md"
 
             if [ "${os}" = "windows" ]; then
-              (cd staging && zip -q "../dist/${archive}.zip" "${binary}")
+              (cd staging && zip -qr "../dist/${archive}.zip" sweepr)
             else
-              tar -C staging -czf "dist/${archive}.tar.gz" "${binary}"
+              tar -C staging -czf "dist/${archive}.tar.gz" sweepr
             fi
-            rm "staging/${binary}"
+            rm -r "${package_root}"
           done
+
+          git archive --format=tar.gz --prefix="sweepr-${VERSION}/" \
+            -o "dist/sweepr_${VERSION}_source.tar.gz" "${COMMIT}"
 
           (cd dist && sha256sum sweepr_* > checksums.txt)
 

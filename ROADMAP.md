@@ -109,7 +109,8 @@
       checklist.
 - [x] Add tag-triggered GitHub release automation for Linux, macOS, and Windows
       on amd64/arm64, including SHA-256 checksums and generated release notes.
-- [x] Add an MIT license.
+- [x] Adopt GPL-3.0-or-later, publish source directions, and preserve bundled
+      dependency notices in release archives.
 - [x] Add a scrollable beginner instruction manual and creator credit to the
       interactive dashboard.
 - [ ] Review the beginner guide and publish `v0.1.0`.
@@ -141,5 +142,16 @@
       thumbnail databases, and Windows user-temp entries older than seven days.
 - [x] Exclude registries, logs, Downloads, trash, cloud content, symlinks, and
       privileged system directories by design.
-- [ ] Verify native findings and safe-trash behavior on Linux, macOS, and
-      Windows before publishing `v0.1.0`.
+- [ ] Verify native findings and safe-trash behavior on every release platform.
+  - [x] Linux: user-owned system-cache allowlist, native trash integration,
+        race detector, release build, and packaged documentation.
+  - [ ] macOS: native cache findings, Finder trash, and complete TUI workflow.
+  - [ ] Windows: native cache findings, Recycle Bin, and complete TUI workflow.
+
+## Phase 15 — Post-release Hardening
+- [ ] Expand cleanup tests around Docker command failures and multi-item
+      partial-success reporting.
+- [ ] Raise scanner and user-configuration coverage around errors, symlinks,
+      exclusions, and invalid persisted settings.
+- [ ] Add automated dependency-vulnerability scanning to CI.
+- [ ] Define supported release lines in `SECURITY.md` before `v1.0.0`.

@@ -251,3 +251,19 @@ sweepr --json
 4. Prefer safe trash for filesystem items.
 5. Review exact paths before confirmation.
 6. Use permanent deletion only when recreation and recovery are understood.
+
+## License and source code
+
+Sweepr is free and open-source software licensed under GPL-3.0-or-later. This
+means you may use it, inspect how it works, modify it, and share it. If you
+distribute your modified version, you must also make its corresponding source
+available under the same GPL terms.
+
+To see the short notice and official source location from any binary, run:
+
+```sh
+sweepr --license
+```
+
+The full terms are in `LICENSE`. Sweepr is provided without warranty. The
+project is maintained by [Chamudu (@Chamudu)](https://github.com/Chamudu).

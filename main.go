@@ -438,12 +438,20 @@ func main() {
 	noProgress := flag.Bool("no-progress", false, "disable interactive scan progress")
 	includeGlobal := flag.Bool("include-global", false, "include global language caches with an explicit root")
 	versionFlag := flag.Bool("version", false, "print version and build information")
+	licenseFlag := flag.Bool("license", false, "print license and source-code information")
 	var excludes stringListFlag
 	flag.Var(&excludes, "exclude", "exclude a path from project scanning (repeatable)")
 
 	flag.Parse()
 	if *versionFlag {
 		fmt.Println(buildinfo.String())
+		return
+	}
+	if *licenseFlag {
+		fmt.Println("sweepr Copyright (C) 2026 Chamudu")
+		fmt.Println("License: GPL-3.0-or-later")
+		fmt.Println("This program comes with ABSOLUTELY NO WARRANTY.")
+		fmt.Println("Source: https://github.com/Chamudu/sweepr")
 		return
 	}
 

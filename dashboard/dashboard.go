@@ -472,6 +472,11 @@ func manualLines() []string {
 		"Trash can fail on special mounts; sweepr leaves those items untouched.",
 		"Permanent deletion cannot be undone through sweepr.",
 		"Full guide: github.com/Chamudu/sweepr/blob/master/docs/GETTING_STARTED.md",
+		"",
+		"LICENSE",
+		"sweepr Copyright (C) 2026 Chamudu",
+		"GPL-3.0-or-later; this program comes with ABSOLUTELY NO WARRANTY.",
+		"Source and license: github.com/Chamudu/sweepr",
 	}
 }
 

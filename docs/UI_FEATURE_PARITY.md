@@ -81,6 +81,7 @@ equivalent of CLI `--yes`; interactive users always review and confirm.
 | `--no-progress` | The dashboard owns and renders its own progress view |
 | `--yes` | Bypassing confirmation conflicts with interactive safety |
 | `--version` | Available before the UI starts and displayed in help/about |
+| `--license` | Available before the UI starts and summarized in the instruction manual |
 
 ## First-launch dialogue
 

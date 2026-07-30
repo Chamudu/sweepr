@@ -29,6 +29,9 @@ go build -o sweepr
 # Show version and platform information
 ./sweepr --version
 
+# Show the license and source-code location
+./sweepr --license
+
 # Scan the current directory
 ./sweepr
 
@@ -135,9 +138,20 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned phases.
 
-Current: **Phase 12** — release packaging and beginner documentation are being
-prepared for `v0.1.0`.
+Current: **Release candidate (Phases 12–14)** — packaging, the complete
+interactive workflow, and conservative cross-platform system cleanup are being
+validated for `v0.1.0`.
 
 ## License
 
-Sweepr is available under the [MIT License](LICENSE). Copyright © 2026 Chamudu.
+Sweepr is free and open-source software under
+[GPL-3.0-or-later](LICENSE). You may use, study, modify, and share it. If you
+distribute a modified version, you must provide its corresponding source under
+the same GPL terms. See [COPYRIGHT](COPYRIGHT) for the short notice and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency licenses.
+
+Copyright © 2026 [Chamudu (@Chamudu)](https://github.com/Chamudu).
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please report
+security-sensitive cleanup or path-handling problems using
+[SECURITY.md](SECURITY.md), not a public issue with exploit details.
