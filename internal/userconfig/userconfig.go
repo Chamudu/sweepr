@@ -12,8 +12,20 @@ import (
 const configVersion = 1
 
 type config struct {
-	Version         int  `json:"version"`
-	WelcomeComplete bool `json:"welcome_complete"`
+	Version         int          `json:"version"`
+	WelcomeComplete bool         `json:"welcome_complete"`
+	Scan            *Preferences `json:"scan,omitempty"`
+}
+
+// Preferences contains read-only scan setup. Destructive mode, selections,
+// and confirmations are intentionally absent and therefore cannot persist.
+type Preferences struct {
+	Root     string   `json:"root"`
+	Scope    string   `json:"scope"`
+	Enabled  []string `json:"enabled_scanners"`
+	MinSize  string   `json:"minimum_size,omitempty"`
+	MinAge   int      `json:"minimum_age_days,omitempty"`
+	Excludes []string `json:"excluded_paths,omitempty"`
 }
 
 // WelcomeComplete reports whether this user has acknowledged the first-run
@@ -39,7 +51,47 @@ func MarkWelcomeComplete() error {
 	if err != nil {
 		return err
 	}
-	return save(path, config{Version: configVersion, WelcomeComplete: true})
+	value, loadErr := load(path)
+	if loadErr != nil && !os.IsNotExist(loadErr) {
+		return loadErr
+	}
+	value.Version, value.WelcomeComplete = configVersion, true
+	return save(path, value)
+}
+
+func LoadPreferences() (Preferences, bool, error) {
+	path, err := configPath()
+	if err != nil {
+		return Preferences{}, false, err
+	}
+	value, err := load(path)
+	if os.IsNotExist(err) {
+		return Preferences{}, false, nil
+	}
+	if err != nil {
+		return Preferences{}, false, err
+	}
+	if value.Scan == nil {
+		return Preferences{}, false, nil
+	}
+	return *value.Scan, true, nil
+}
+
+func SavePreferences(preferences Preferences) error {
+	path, err := configPath()
+	if err != nil {
+		return err
+	}
+	value, loadErr := load(path)
+	if loadErr != nil && !os.IsNotExist(loadErr) {
+		return loadErr
+	}
+	value.Version = configVersion
+	copy := preferences
+	copy.Enabled = append([]string(nil), preferences.Enabled...)
+	copy.Excludes = append([]string(nil), preferences.Excludes...)
+	value.Scan = &copy
+	return save(path, value)
 }
 
 func configPath() (string, error) {

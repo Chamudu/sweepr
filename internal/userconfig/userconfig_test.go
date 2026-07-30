@@ -37,3 +37,21 @@ func TestLoadRejectsInvalidJSON(t *testing.T) {
 		t.Fatal("invalid configuration JSON returned no error")
 	}
 }
+
+func TestConfigRoundTripIncludesOnlyScanPreferences(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	want := config{Version: configVersion, WelcomeComplete: true, Scan: &Preferences{
+		Root: "/projects/app", Scope: "local", Enabled: []string{"dev-junk"},
+		MinSize: "100MB", MinAge: 30, Excludes: []string{"/projects/app/vendor"},
+	}}
+	if err := save(path, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Scan == nil || got.Scan.Root != want.Scan.Root || got.Scan.MinAge != 30 {
+		t.Fatalf("loaded preferences = %#v; want %#v", got.Scan, want.Scan)
+	}
+}

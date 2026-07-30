@@ -26,7 +26,9 @@ type ScanSetup struct {
 	Root     string
 	Scope    ScanScope
 	Enabled  map[string]bool
-	Advanced bool
+	MinSize  string
+	MinAge   int
+	Excludes []string
 }
 
 func DefaultScanSetup(root string) ScanSetup {
@@ -51,6 +53,7 @@ type setupAction uint8
 const (
 	setupNone setupAction = iota
 	setupBrowse
+	setupAdvanced
 	setupStart
 	setupExit
 )
@@ -124,7 +127,8 @@ func (m *SetupModel) activate(enter bool) bool {
 		}
 		m.config.Enabled[name] = !m.config.Enabled[name]
 	case m.cursor == 6:
-		m.notice = "Advanced filters will open here in the next implementation step."
+		m.action = setupAdvanced
+		return true
 	case m.cursor == 7 && enter:
 		if err := validateSetup(m.config); err != nil {
 			m.notice = err.Error()
@@ -208,6 +212,21 @@ func validateSetup(config ScanSetup) error {
 
 func scopeTitle(scope ScanScope) string {
 	return [...]string{"Selected folder only", "Global resources only", "Folder + global resources"}[scope]
+}
+
+func (s ScanScope) String() string { return [...]string{"local", "global", "combined"}[s] }
+
+func ParseScanScope(value string) (ScanScope, bool) {
+	switch value {
+	case "local":
+		return ScopeLocal, true
+	case "global":
+		return ScopeGlobal, true
+	case "combined":
+		return ScopeCombined, true
+	default:
+		return ScopeLocal, false
+	}
 }
 
 func scannerTitle(name string) string {
@@ -306,6 +325,14 @@ func RunScanSetup(initial ScanSetup) (ScanSetup, bool, error) {
 			}
 			if selected {
 				config.Root = filepath.Clean(path)
+			}
+		case setupAdvanced:
+			updated, applied, err := RunAdvancedSetup(config)
+			if err != nil {
+				return ScanSetup{}, false, err
+			}
+			if applied {
+				config = updated
 			}
 		case setupStart:
 			return config, true, nil

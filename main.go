@@ -472,7 +472,21 @@ func main() {
 		if flag.NArg() > 0 {
 			initialRoot = flag.Arg(0)
 		}
-		setup, start, err := dashboard.RunScanSetup(dashboard.DefaultScanSetup(initialRoot))
+		initialSetup := dashboard.DefaultScanSetup(initialRoot)
+		if saved, found, err := userconfig.LoadPreferences(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not load saved scan settings: %v\n", err)
+		} else if found {
+			if scope, valid := dashboard.ParseScanScope(saved.Scope); valid {
+				initialSetup.Root, initialSetup.Scope = saved.Root, scope
+				initialSetup.Enabled = make(map[string]bool)
+				for _, name := range saved.Enabled {
+					initialSetup.Enabled[name] = true
+				}
+				initialSetup.MinSize, initialSetup.MinAge = saved.MinSize, saved.MinAge
+				initialSetup.Excludes = append([]string(nil), saved.Excludes...)
+			}
+		}
+		setup, start, err := dashboard.RunScanSetup(initialSetup)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running scan setup: %v\n", err)
 			os.Exit(1)
@@ -480,10 +494,19 @@ func main() {
 		if !start {
 			return
 		}
+		if err := userconfig.SavePreferences(userconfig.Preferences{
+			Root: setup.Root, Scope: setup.Scope.String(), Enabled: setup.EnabledScannerNames(),
+			MinSize: setup.MinSize, MinAge: setup.MinAge, Excludes: setup.Excludes,
+		}); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not save scan settings: %v\n", err)
+		}
 		tuiSetup = &setup
 		*only = strings.Join(setup.EnabledScannerNames(), ",")
 		*skip = ""
 		*includeGlobal = setup.Scope != dashboard.ScopeLocal
+		*minSize = setup.MinSize
+		*minAge = setup.MinAge
+		excludes = stringListFlag(append([]string(nil), setup.Excludes...))
 	}
 
 	var minSizeBytes int64

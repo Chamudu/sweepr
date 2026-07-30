@@ -36,6 +36,12 @@ resources**. Scanners that do not belong to the selected scope stay visible as
 `[-]` and explain why they are unavailable. Use Space to opt compatible
 scanners in or out, then choose **Start scan**.
 
+The **Advanced settings** page accepts a minimum result size such as `100MB`,
+a minimum age in whole days, and multiple excluded directories. Highlight an
+excluded path and press `x` to remove it. Scan settings are remembered for the
+next launch, but cleanup mode, selected results, and confirmations are never
+remembered.
+
 If `sweepr` is not installed yet, see [Installing](#installing).
 
 ## Understanding scan scope

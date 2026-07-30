@@ -123,10 +123,10 @@
         confirmation, parent/home navigation, and permission-error reporting.
   - [x] Define local, global, and combined scope compatibility with visible
         notices for unavailable scanners and conflict-free opt-out controls.
-- [ ] Add advanced exclusions, global-cache scope, minimum-size, and
+- [x] Add advanced exclusions, global-cache scope, minimum-size, and
       minimum-age controls.
 - [ ] Run scans from the dashboard with live progress and cancellation.
-- [ ] Store first-launch acknowledgement and safe preferences in the native
+- [x] Store first-launch acknowledgement and safe preferences in the native
       user configuration directory.
 - [ ] Test setup validation and the complete workflow on Linux, macOS, and
       Windows before publishing `v0.1.0`.
