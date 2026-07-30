@@ -25,6 +25,28 @@ configuration directory. It is not stored inside the scanned project.
 | Docker images | `--only` / `--skip docker` | Enabled |
 | Global user caches | `--include-global` | Off for an explicitly selected directory |
 
+### Scope and scanner compatibility
+
+The UI uses one explicit scope rather than making users combine `--only`,
+`--skip`, and `--include-global` correctly.
+
+| Scanner | Selected folder | Global resources | Folder + global |
+|---|---:|---:|---:|
+| Developer junk | Available | Disabled | Available |
+| OS junk | Available | Disabled | Available |
+| Language caches | Disabled | Available | Available |
+| Docker images | Disabled | Available | Available |
+
+Disabled rows remain visible and explain why they cannot run in the selected
+scope. For example, Docker images belong to the current Docker engine rather
+than the chosen folder. Changing scope automatically removes incompatible
+scanner selections and shows a notice; it never runs them silently.
+
+Within the interactive UI, scanner checkboxes produce one canonical enabled
+set. This prevents contradictory CLI-style combinations such as selecting and
+skipping the same scanner. CLI flags keep their existing behavior for scripts
+and experienced users.
+
 The target uses a terminal-native directory selector with folder-only rows,
 parent and home navigation, scrolling, and explicit confirmation. This works
 consistently on Linux, macOS, Windows, remote terminals, and SSH sessions

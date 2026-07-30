@@ -121,6 +121,8 @@
 - [ ] Add target-directory and scanner selection before scanning.
   - [x] Build a terminal-native, scrollable directory selector with explicit
         confirmation, parent/home navigation, and permission-error reporting.
+  - [x] Define local, global, and combined scope compatibility with visible
+        notices for unavailable scanners and conflict-free opt-out controls.
 - [ ] Add advanced exclusions, global-cache scope, minimum-size, and
       minimum-age controls.
 - [ ] Run scans from the dashboard with live progress and cancellation.
