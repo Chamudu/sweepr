@@ -101,3 +101,13 @@
       first/last navigation, select-all, and clear-selection controls.
 - [x] Test resize handling, viewport visibility, cell-aware truncation, and
       mode-safe bulk selection.
+
+## Phase 12 — Release Readiness
+- [x] Add `--version` with linker-injected version, commit, build date,
+      toolchain, and target-platform information.
+- [x] Add a beginner getting-started and safety guide plus a maintainer release
+      checklist.
+- [x] Add tag-triggered GitHub release automation for Linux, macOS, and Windows
+      on amd64/arm64, including SHA-256 checksums and generated release notes.
+- [ ] Choose and add the project license.
+- [ ] Review the beginner guide and publish `v0.1.0`.

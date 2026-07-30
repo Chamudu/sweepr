@@ -4,6 +4,10 @@
 
 A fast command-line tool to find and report reclaimable disk space on developer machines — build artifacts, OS-generated clutter, and global package-manager caches.
 
+New to command-line cleanup tools? Start with the
+[beginner getting-started guide](docs/GETTING_STARTED.md). It begins in
+read-only mode and explains every cleanup option before you change anything.
+
 ```
 Running scanner: dev-junk...
         node_modules  ./my-app/node_modules          312.44 MB  Last Mod: 2026-06-30
@@ -21,6 +25,9 @@ Total items: 4            Total size: 6.75 GB
 ```bash
 # Build the binary
 go build -o sweepr
+
+# Show version and platform information
+./sweepr --version
 
 # Scan the current directory
 ./sweepr
@@ -123,5 +130,5 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned phases.
 
-Current: **Phase 9** — the interactive dashboard and cross-platform safe-trash
-support are implemented. See the roadmap for remaining portability work.
+Current: **Phase 12** — release packaging and beginner documentation are being
+prepared for `v0.1.0`.

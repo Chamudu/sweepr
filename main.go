@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sweepr/dashboard"
+	"sweepr/internal/buildinfo"
 	"sweepr/remover"
 	"sweepr/scanner"
 	"sweepr/trash"
@@ -413,10 +414,15 @@ func main() {
 	tuiFlag := flag.Bool("tui", false, "open scan results in the interactive terminal dashboard")
 	noProgress := flag.Bool("no-progress", false, "disable interactive scan progress")
 	includeGlobal := flag.Bool("include-global", false, "include global language caches with an explicit root")
+	versionFlag := flag.Bool("version", false, "print version and build information")
 	var excludes stringListFlag
 	flag.Var(&excludes, "exclude", "exclude a path from project scanning (repeatable)")
 
 	flag.Parse()
+	if *versionFlag {
+		fmt.Println(buildinfo.String())
+		return
+	}
 
 	if *deleteFlag && *trashFlag {
 		fmt.Fprintln(os.Stderr, "Error: --delete and --trash are mutually exclusive")
