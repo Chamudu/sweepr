@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"sweepr/dashboard"
 	"sweepr/scanner"
 )
 
@@ -47,5 +48,26 @@ func TestRunScanJobsStartsJobsConcurrently(t *testing.T) {
 	items := <-done
 	if len(items) != 2 {
 		t.Fatalf("runScanJobs returned %d items; want 2", len(items))
+	}
+}
+
+func TestDeleteConfirmedSelectionOnlyForwardsConfirmedItems(t *testing.T) {
+	selected := []scanner.Item{{Path: "/tmp/selected", Kind: "test"}}
+	var received []scanner.Item
+	spyDelete := func(items []scanner.Item) {
+		received = append(received, items...)
+	}
+
+	deleted := deleteConfirmedSelection(dashboard.Result{Items: selected}, spyDelete)
+	if deleted || len(received) != 0 {
+		t.Fatal("unconfirmed dashboard result reached deletion")
+	}
+
+	deleted = deleteConfirmedSelection(dashboard.Result{
+		Items:     selected,
+		Confirmed: true,
+	}, spyDelete)
+	if !deleted || len(received) != 1 || received[0].Path != "/tmp/selected" {
+		t.Fatalf("confirmed deletion received %#v; want only /tmp/selected", received)
 	}
 }

@@ -15,11 +15,12 @@ import (
 // state in a plain Go value makes keyboard behavior testable without starting
 // a real terminal.
 type Model struct {
-	items     []scanner.Item
-	cursor    int
-	selected  map[int]struct{}
-	screen    screen
-	confirmed bool
+	items         []scanner.Item
+	cursor        int
+	selected      map[int]struct{}
+	screen        screen
+	confirmed     bool
+	deleteEnabled bool
 }
 
 // screen identifies which dashboard page currently owns keyboard input.
@@ -42,10 +43,11 @@ type Result struct {
 // NewModel builds a dashboard with the cursor on the first result and no items
 // selected. The items slice is copied so callers cannot reorder it underneath
 // the running UI.
-func NewModel(items []scanner.Item) Model {
+func NewModel(items []scanner.Item, deleteEnabled bool) Model {
 	return Model{
-		items:    append([]scanner.Item(nil), items...),
-		selected: make(map[int]struct{}),
+		items:         append([]scanner.Item(nil), items...),
+		selected:      make(map[int]struct{}),
+		deleteEnabled: deleteEnabled,
 	}
 }
 
@@ -170,8 +172,13 @@ func (m Model) writeReview(view *strings.Builder) {
 
 	fmt.Fprintf(view, "\n%d items selected • %s reclaimable\n",
 		len(m.selected), formatSize(m.selectedBytes()))
-	view.WriteString("\nNo files will be deleted in this version.\n")
-	view.WriteString("enter confirm intent  esc back  q quit")
+	if m.deleteEnabled {
+		view.WriteString("\nWARNING: Enter will permanently delete these resources.\n")
+		view.WriteString("enter DELETE selected  esc back  q quit")
+	} else {
+		view.WriteString("\nRead-only mode: no resources will be deleted.\n")
+		view.WriteString("enter confirm preview  esc back  q quit")
+	}
 }
 
 func (m Model) selectedBytes() int64 {
@@ -216,8 +223,8 @@ func (m Model) selectedItems() []scanner.Item {
 
 // Run starts the terminal event loop and blocks until the user quits. It
 // returns data describing the user's decision but performs no deletion.
-func Run(items []scanner.Item) (Result, error) {
-	final, err := tea.NewProgram(NewModel(items)).Run()
+func Run(items []scanner.Item, deleteEnabled bool) (Result, error) {
+	final, err := tea.NewProgram(NewModel(items, deleteEnabled)).Run()
 	if err != nil {
 		return Result{}, err
 	}

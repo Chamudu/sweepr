@@ -210,6 +210,17 @@ func deleteJunk(filteredItems []scanner.Item) {
 	}
 }
 
+// deleteConfirmedSelection is the final boundary between dashboard intent and
+// destructive work. Keeping this gate small makes it easy to verify that an
+// unconfirmed result can never reach the removal function.
+func deleteConfirmedSelection(result dashboard.Result, deleteItems func([]scanner.Item)) bool {
+	if !result.Confirmed {
+		return false
+	}
+	deleteItems(result.Items)
+	return true
+}
+
 func header(root string, scanners []scanner.Scanner) {
 	home, _ := os.UserHomeDir()
 
@@ -386,8 +397,12 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: cannot use --json and --delete together")
 		os.Exit(1)
 	}
-	if *tuiFlag && (*jsonFlag || *deleteFlag) {
-		fmt.Fprintln(os.Stderr, "Error: --tui cannot currently be combined with --json or --delete")
+	if *tuiFlag && *jsonFlag {
+		fmt.Fprintln(os.Stderr, "Error: --tui cannot be combined with --json")
+		os.Exit(1)
+	}
+	if *tuiFlag && *yesFlag {
+		fmt.Fprintln(os.Stderr, "Error: --yes cannot be used with --tui; dashboard deletion requires confirmation")
 		os.Exit(1)
 	}
 
@@ -548,13 +563,28 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
 			os.Exit(1)
 		}
-		result, err := dashboard.Run(filteredItems)
+		dashboardItems := filteredItems
+		if *deleteFlag {
+			dashboardItems = make([]scanner.Item, 0, len(filteredItems))
+			for _, item := range filteredItems {
+				if supportsDeletion(item) {
+					dashboardItems = append(dashboardItems, item)
+					continue
+				}
+				fmt.Printf("Skipping %s: deletion is not supported for %q resources.\n",
+					displayTarget(item), item.ResourceType)
+			}
+		}
+
+		result, err := dashboard.Run(dashboardItems, *deleteFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running dashboard: %v\n", err)
 			os.Exit(1)
 		}
-		if result.Confirmed {
-			fmt.Printf("Selection confirmed: %d items. Deletion is not connected to the dashboard yet.\n",
+		if *deleteFlag {
+			deleteConfirmedSelection(result, deleteJunk)
+		} else if result.Confirmed {
+			fmt.Printf("Read-only selection confirmed: %d items. Use --tui --delete to enable removal.\n",
 				len(result.Items))
 		}
 		return

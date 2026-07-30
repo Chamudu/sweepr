@@ -18,7 +18,7 @@ func TestUpdateNavigatesAndTogglesWithKeyboardEvents(t *testing.T) {
 	model := NewModel([]scanner.Item{
 		{Kind: "first", SizeBytes: 10},
 		{Kind: "second", SizeBytes: 20},
-	})
+	}, false)
 
 	model = press(model, tea.Key{Code: tea.KeyDown})
 	if model.cursor != 1 {
@@ -41,7 +41,7 @@ func TestToggleCurrentTracksSelectionAndBytes(t *testing.T) {
 	model := NewModel([]scanner.Item{
 		{Kind: "npm-cache", SizeBytes: 1024},
 		{Kind: "go-build-cache", SizeBytes: 2048},
-	})
+	}, false)
 
 	model.toggleCurrent()
 	if len(model.selected) != 1 || model.selectedBytes() != 1024 {
@@ -61,7 +61,7 @@ func TestReviewRequiresSelectionAndSupportsBackAndConfirm(t *testing.T) {
 		Path:      "/tmp/cache",
 		Kind:      "test-cache",
 		SizeBytes: 4096,
-	}})
+	}}, true)
 
 	model = press(model, tea.Key{Code: 'd', Text: "d"})
 	if model.screen != screenItems {
@@ -98,10 +98,28 @@ func TestViewUsesDisplayNameForNonFilesystemResources(t *testing.T) {
 		Path:        "sha256:abc123",
 		DisplayName: "dangling image abc123",
 		Kind:        "docker-image",
-	}})
+	}}, false)
 
 	content := model.View().Content
 	if !strings.Contains(content, "dangling image abc123") {
 		t.Fatalf("dashboard view did not contain friendly display name: %q", content)
+	}
+}
+
+func TestReviewExplainsWhetherDeletionIsEnabled(t *testing.T) {
+	item := scanner.Item{Path: "/tmp/cache", Kind: "cache"}
+
+	readOnly := NewModel([]scanner.Item{item}, false)
+	readOnly.toggleCurrent()
+	readOnly.screen = screenReview
+	if content := readOnly.View().Content; !strings.Contains(content, "Read-only mode") {
+		t.Fatalf("read-only review omitted its safety status: %q", content)
+	}
+
+	destructive := NewModel([]scanner.Item{item}, true)
+	destructive.toggleCurrent()
+	destructive.screen = screenReview
+	if content := destructive.View().Content; !strings.Contains(content, "permanently delete") {
+		t.Fatalf("deletion review omitted its warning: %q", content)
 	}
 }
