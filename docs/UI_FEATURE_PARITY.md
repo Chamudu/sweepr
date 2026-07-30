@@ -25,9 +25,11 @@ configuration directory. It is not stored inside the scanned project.
 | Docker images | `--only` / `--skip docker` | Enabled |
 | Global user caches | `--include-global` | Off for an explicitly selected directory |
 
-The target is a validated text field. This works consistently on Linux,
-macOS, Windows, remote terminals, and SSH sessions without adding a different
-native file-dialog dependency for every desktop platform.
+The target uses a terminal-native directory selector with folder-only rows,
+parent and home navigation, scrolling, and explicit confirmation. This works
+consistently on Linux, macOS, Windows, remote terminals, and SSH sessions
+without adding a different native file-dialog dependency for every desktop
+platform.
 
 ## Advanced scan setup
 
