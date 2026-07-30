@@ -13,6 +13,7 @@ type WelcomeModel struct {
 	width     int
 	height    int
 	continued bool
+	choice    int
 }
 
 func (m WelcomeModel) Init() tea.Cmd { return nil }
@@ -23,8 +24,12 @@ func (m WelcomeModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = message.Width, message.Height
 	case tea.KeyPressMsg:
 		switch message.String() {
+		case "up", "k":
+			m.choice = max(0, m.choice-1)
+		case "down", "j":
+			m.choice = min(1, m.choice+1)
 		case "enter":
-			m.continued = true
+			m.continued = m.choice == 0
 			return m, tea.Quit
 		case "q", "esc", "ctrl+c":
 			return m, tea.Quit
@@ -55,7 +60,19 @@ func (m WelcomeModel) View() tea.View {
 	view.WriteString("\n\n")
 	view.WriteString("Global caches can affect builds outside the selected project.\n")
 	view.WriteString("You will review exact paths before any cleanup action.\n\n")
-	view.WriteString(helpStyle.Render("enter continue safely   esc/q exit without scanning"))
+	for index, label := range []string{"Continue to scan setup", "Exit sweepr"} {
+		cursor := "  "
+		style := subtitleStyle
+		if index == m.choice {
+			cursor = "› "
+			style = activeRowStyle
+		}
+		view.WriteString(cursor)
+		view.WriteString(style.Render(label))
+		view.WriteString("\n")
+	}
+	view.WriteString("\n")
+	view.WriteString(helpStyle.Render("↑/↓ choose   enter confirm   esc/q exit"))
 
 	style := appStyle
 	if m.width > 0 {
