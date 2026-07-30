@@ -56,6 +56,43 @@ func TestToggleCurrentTracksSelectionAndBytes(t *testing.T) {
 	}
 }
 
+func TestReviewRequiresSelectionAndSupportsBackAndConfirm(t *testing.T) {
+	model := NewModel([]scanner.Item{{
+		Path:      "/tmp/cache",
+		Kind:      "test-cache",
+		SizeBytes: 4096,
+	}})
+
+	model = press(model, tea.Key{Code: 'd', Text: "d"})
+	if model.screen != screenItems {
+		t.Fatal("d opened review without a selected item")
+	}
+
+	model = press(model, tea.Key{Code: tea.KeySpace})
+	model = press(model, tea.Key{Code: 'd', Text: "d"})
+	if model.screen != screenReview {
+		t.Fatal("d did not open review after selecting an item")
+	}
+	if content := model.View().Content; !strings.Contains(content, "/tmp/cache") {
+		t.Fatalf("review did not show the exact selected target: %q", content)
+	}
+
+	model = press(model, tea.Key{Code: tea.KeyEscape})
+	if model.screen != screenItems {
+		t.Fatal("escape did not return from review to the item list")
+	}
+
+	model = press(model, tea.Key{Code: 'd', Text: "d"})
+	model = press(model, tea.Key{Code: tea.KeyEnter})
+	if !model.confirmed {
+		t.Fatal("enter on the review screen did not record confirmation intent")
+	}
+	selected := model.selectedItems()
+	if len(selected) != 1 || selected[0].Path != "/tmp/cache" {
+		t.Fatalf("confirmed selection was %#v; want /tmp/cache", selected)
+	}
+}
+
 func TestViewUsesDisplayNameForNonFilesystemResources(t *testing.T) {
 	model := NewModel([]scanner.Item{{
 		Path:        "sha256:abc123",

@@ -15,9 +15,28 @@ import (
 // state in a plain Go value makes keyboard behavior testable without starting
 // a real terminal.
 type Model struct {
-	items    []scanner.Item
-	cursor   int
-	selected map[int]struct{}
+	items     []scanner.Item
+	cursor    int
+	selected  map[int]struct{}
+	screen    screen
+	confirmed bool
+}
+
+// screen identifies which dashboard page currently owns keyboard input.
+// Named states are easier to extend and reason about than combinations such as
+// reviewing=true, confirming=false, finished=false.
+type screen uint8
+
+const (
+	screenItems screen = iota
+	screenReview
+)
+
+// Result is the user's final dashboard decision. Confirmed records intent only;
+// the dashboard package never removes resources itself.
+type Result struct {
+	Items     []scanner.Item
+	Confirmed bool
 }
 
 // NewModel builds a dashboard with the cursor on the first result and no items
@@ -44,8 +63,23 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if key.String() == "q" || key.String() == "ctrl+c" {
+		return m, tea.Quit
+	}
+
+	if m.screen == screenReview {
+		switch key.String() {
+		case "esc":
+			m.screen = screenItems
+		case "enter":
+			m.confirmed = true
+			return m, tea.Quit
+		}
+		return m, nil
+	}
+
 	switch key.String() {
-	case "q", "ctrl+c", "esc":
+	case "esc":
 		return m, tea.Quit
 	case "up", "k":
 		if m.cursor > 0 {
@@ -57,6 +91,10 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case "space":
 		m.toggleCurrent()
+	case "d":
+		if len(m.selected) > 0 {
+			m.screen = screenReview
+		}
 	}
 
 	return m, nil
@@ -79,7 +117,19 @@ func (m Model) View() tea.View {
 	var view strings.Builder
 	view.WriteString("sweepr dashboard\n")
 	view.WriteString("────────────────────────────────────────────────────────────────────\n")
+	if m.screen == screenReview {
+		m.writeReview(&view)
+	} else {
+		m.writeItems(&view)
+	}
 
+	result := tea.NewView(view.String())
+	result.AltScreen = true
+	result.WindowTitle = "sweepr dashboard"
+	return result
+}
+
+func (m Model) writeItems(view *strings.Builder) {
 	if len(m.items) == 0 {
 		view.WriteString("\nNo junk matched the selected filters.\n")
 	} else {
@@ -93,7 +143,7 @@ func (m Model) View() tea.View {
 				checkbox = "[x]"
 			}
 
-			fmt.Fprintf(&view, "%s %s %-20s %10s  %s\n",
+			fmt.Fprintf(view, "%s %s %-20s %10s  %s\n",
 				cursor,
 				checkbox,
 				item.Kind,
@@ -103,14 +153,25 @@ func (m Model) View() tea.View {
 		}
 	}
 
-	fmt.Fprintf(&view, "\nSelected: %d/%d  Reclaimable: %s\n",
+	fmt.Fprintf(view, "\nSelected: %d/%d  Reclaimable: %s\n",
 		len(m.selected), len(m.items), formatSize(m.selectedBytes()))
-	view.WriteString("↑/k up  ↓/j down  space toggle  q quit  •  deletion not enabled yet")
+	view.WriteString("↑/k up  ↓/j down  space toggle  d review  q quit")
+}
 
-	result := tea.NewView(view.String())
-	result.AltScreen = true
-	result.WindowTitle = "sweepr dashboard"
-	return result
+func (m Model) writeReview(view *strings.Builder) {
+	view.WriteString("\nReview selection\n\n")
+	for index, item := range m.items {
+		if _, selected := m.selected[index]; !selected {
+			continue
+		}
+		fmt.Fprintf(view, "  %-20s %10s  %s\n",
+			item.Kind, formatSize(item.SizeBytes), displayTarget(item))
+	}
+
+	fmt.Fprintf(view, "\n%d items selected • %s reclaimable\n",
+		len(m.selected), formatSize(m.selectedBytes()))
+	view.WriteString("\nNo files will be deleted in this version.\n")
+	view.WriteString("enter confirm intent  esc back  q quit")
 }
 
 func (m Model) selectedBytes() int64 {
@@ -142,8 +203,27 @@ func formatSize(bytes int64) string {
 	return fmt.Sprintf("%.2f %cB", float64(bytes)/divisor, "KMGTPE"[exponent-1])
 }
 
-// Run starts the terminal event loop and blocks until the user quits.
-func Run(items []scanner.Item) error {
-	_, err := tea.NewProgram(NewModel(items)).Run()
-	return err
+func (m Model) selectedItems() []scanner.Item {
+	items := make([]scanner.Item, 0, len(m.selected))
+	// Iterating over items, rather than over the map, preserves dashboard order.
+	for index, item := range m.items {
+		if _, selected := m.selected[index]; selected {
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+// Run starts the terminal event loop and blocks until the user quits. It
+// returns data describing the user's decision but performs no deletion.
+func Run(items []scanner.Item) (Result, error) {
+	final, err := tea.NewProgram(NewModel(items)).Run()
+	if err != nil {
+		return Result{}, err
+	}
+	model, ok := final.(Model)
+	if !ok {
+		return Result{}, fmt.Errorf("dashboard returned unexpected model type %T", final)
+	}
+	return Result{Items: model.selectedItems(), Confirmed: model.confirmed}, nil
 }

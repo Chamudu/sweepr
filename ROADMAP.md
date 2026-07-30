@@ -76,8 +76,9 @@
         items for deletion, `d` to delete selected.
     - [x] Add an explicit `--tui` read-only dashboard with navigation,
           selection state, selected-byte totals, and an alternate-screen view.
-    - [ ] Add a review/confirmation state and connect selected items to the
-          resource-aware remover.
+    - [x] Add a review screen with exact targets, total size, back navigation,
+          and explicit confirmation intent without performing deletion.
+    - [ ] Connect a confirmed dashboard selection to the resource-aware remover.
   - **Local web UI:** `net/http` server exposing `/scan` and `/delete`, with a small HTML/JS frontend.
   - **Native GUI:** `fyne.io/fyne`.
 - [ ] Add **Safe Trash Support**: Integrate trash libraries (like `github.com/electron/trash` equivalents, or native AppleScript/gio shell-outs) to move items to system trash instead of calling `RemoveAll`.

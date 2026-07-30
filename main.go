@@ -548,9 +548,14 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
 			os.Exit(1)
 		}
-		if err := dashboard.Run(filteredItems); err != nil {
+		result, err := dashboard.Run(filteredItems)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running dashboard: %v\n", err)
 			os.Exit(1)
+		}
+		if result.Confirmed {
+			fmt.Printf("Selection confirmed: %d items. Deletion is not connected to the dashboard yet.\n",
+				len(result.Items))
 		}
 		return
 	}
