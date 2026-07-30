@@ -70,10 +70,17 @@ jobs:
           (cd dist && sha256sum sweepr_* > checksums.txt)
 
       - name: Publish GitHub release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "${GITHUB_REF_NAME}" dist/*
-          --verify-tag
-          --generate-notes
-          --title "sweepr ${GITHUB_REF_NAME}"
+        run: |
+          set -euo pipefail
+          release_flags=()
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --verify-tag \
+            --generate-notes \
+            --title "sweepr ${GITHUB_REF_NAME}" \
+            "${release_flags[@]}"

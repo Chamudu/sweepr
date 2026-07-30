@@ -1,0 +1,56 @@
+name: Release-candidate platform test
+description: Report the results of the guided Linux, macOS, or Windows test.
+title: "[Platform test]: "
+labels:
+  - testing
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Sweepr version
+      description: Paste the output of `sweepr --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version and terminal
+      placeholder: Windows 11 24H2, Windows Terminal
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Completed checks
+      options:
+        - label: Welcome, setup, and instruction screens display correctly.
+        - label: Directory selection and local/global/combined scopes work.
+        - label: Scanner compatibility notices are understandable.
+        - label: Scan progress and cancellation work.
+        - label: Read-only results and terminal resizing work.
+        - label: A disposable folder moved to native trash or Recycle Bin.
+  - type: textarea
+    id: problems
+    attributes:
+      label: Problems or confusing behavior
+      description: Include reproduction steps; remove private paths and sensitive data.
+      placeholder: Write “None” if every check passed.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I used only disposable test data for cleanup testing.
+          required: true

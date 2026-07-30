@@ -155,3 +155,7 @@ Copyright © 2026 [Chamudu (@Chamudu)](https://github.com/Chamudu).
 Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please report
 security-sensitive cleanup or path-handling problems using
 [SECURITY.md](SECURITY.md), not a public issue with exploit details.
+
+Testing a release candidate? Use the repository's **Release-candidate platform
+test** issue form to report your operating system, terminal, completed checks,
+and confusing behavior. Perform cleanup tests only with disposable data.

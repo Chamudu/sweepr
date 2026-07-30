@@ -22,12 +22,15 @@ go build -o /tmp/sweepr-release-check .
 
 ## Tagging
 
-Use semantic versions such as `v0.1.0`. Create an annotated tag so its purpose
-is recorded in Git history:
+Use semantic versions such as `v0.1.0`. When native or beginner testing is not
+finished, publish a release candidate such as `v0.1.0-rc.1` first. Tags that
+contain a hyphen are automatically marked as pre-releases on GitHub.
+
+Create an annotated tag so its purpose is recorded in Git history:
 
 ```sh
-git tag -a v0.1.0 -m "sweepr v0.1.0"
-git push origin v0.1.0
+git tag -a v0.1.0-rc.1 -m "sweepr v0.1.0-rc.1"
+git push origin v0.1.0-rc.1
 ```
 
 The release workflow tests the tagged commit, embeds the tag/commit/build date,
@@ -44,6 +47,8 @@ third-party notices, README, and beginner guide.
 3. Open the dashboard and perform a read-only scan.
 4. Confirm the release page contains all six binary archives, the tagged-source
    archive, and `checksums.txt`.
+5. Ask testers to use the release-candidate platform-test issue form. Fix or
+   document every safety-related report before publishing the final version.
 
 ## Interactive workflow check
 
