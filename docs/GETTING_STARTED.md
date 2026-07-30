@@ -30,6 +30,12 @@ Choose **Read only**. This mode cannot change files. Move with the arrow keys,
 select interesting rows with Space, and press `d` to preview them. Press `q` at
 any time to exit.
 
+Before scanning, the setup screen lets you browse for a directory and choose
+**Selected folder only**, **Global resources only**, or **Folder + global
+resources**. Scanners that do not belong to the selected scope stay visible as
+`[-]` and explain why they are unavailable. Use Space to opt compatible
+scanners in or out, then choose **Start scan**.
+
 If `sweepr` is not installed yet, see [Installing](#installing).
 
 ## Understanding scan scope

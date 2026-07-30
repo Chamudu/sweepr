@@ -118,7 +118,7 @@
 - [x] Map CLI features to basic, advanced, and intentionally CLI-only UI
       controls.
 - [x] Add a first-launch welcome and safety acknowledgement.
-- [ ] Add target-directory and scanner selection before scanning.
+- [x] Add target-directory, scope, and scanner selection before scanning.
   - [x] Build a terminal-native, scrollable directory selector with explicit
         confirmation, parent/home navigation, and permission-error reporting.
   - [x] Define local, global, and combined scope compatibility with visible

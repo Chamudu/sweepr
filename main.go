@@ -445,6 +445,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: --trash currently requires --tui")
 		os.Exit(1)
 	}
+	var tuiSetup *dashboard.ScanSetup
 	if *tuiFlag {
 		if !isInteractiveTerminal(os.Stdin) || !isInteractiveTerminal(os.Stdout) {
 			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
@@ -467,6 +468,22 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Warning: could not save UI preferences: %v\n", err)
 			}
 		}
+		initialRoot := "."
+		if flag.NArg() > 0 {
+			initialRoot = flag.Arg(0)
+		}
+		setup, start, err := dashboard.RunScanSetup(dashboard.DefaultScanSetup(initialRoot))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error running scan setup: %v\n", err)
+			os.Exit(1)
+		}
+		if !start {
+			return
+		}
+		tuiSetup = &setup
+		*only = strings.Join(setup.EnabledScannerNames(), ",")
+		*skip = ""
+		*includeGlobal = setup.Scope != dashboard.ScopeLocal
 	}
 
 	var minSizeBytes int64
@@ -484,7 +501,10 @@ func main() {
 	// LangCacheScanner ignores this value and always checks $HOME.
 	root := "."
 	rootProvided := flag.NArg() > 0
-	if rootProvided {
+	if tuiSetup != nil {
+		root = tuiSetup.Root
+		rootProvided = true
+	} else if rootProvided {
 		root = flag.Arg(0)
 	}
 
