@@ -27,6 +27,8 @@ type Model struct {
 	height       int
 	offset       int
 	reviewOffset int
+	helpOffset   int
+	returnScreen screen
 }
 
 // Mode describes the action the user chose for selected resources.
@@ -65,7 +67,32 @@ var (
 	dangerStyle       = lipgloss.NewStyle().Foreground(redColor).Bold(true)
 	safeStyle         = lipgloss.NewStyle().Foreground(greenColor).Bold(true)
 	infoStyle         = lipgloss.NewStyle().Foreground(cyanColor)
+	shortcutKeyStyle  = lipgloss.NewStyle().Bold(true).Foreground(cyanColor)
+	creatorStyle      = lipgloss.NewStyle().Italic(true).Foreground(mutedColor)
 )
+
+func renderBrandSubtitle(label string) string {
+	credit := creatorStyle.Render("by Chamudu")
+	if label == "" {
+		return credit
+	}
+	return subtitleStyle.Render(label+" • ") + credit
+}
+
+type shortcut struct {
+	key    string
+	action string
+}
+
+// renderShortcuts gives every screen the same visual grammar: emphasized keys
+// followed by plain-language actions, separated into easy-to-scan groups.
+func renderShortcuts(shortcuts ...shortcut) string {
+	parts := make([]string, 0, len(shortcuts))
+	for _, item := range shortcuts {
+		parts = append(parts, shortcutKeyStyle.Render(item.key)+" "+helpStyle.Render(item.action))
+	}
+	return strings.Join(parts, helpStyle.Render("  •  "))
+}
 
 func modeCardStyle(width int, active bool) lipgloss.Style {
 	color := borderColor
@@ -111,6 +138,7 @@ const (
 	screenMode screen = iota
 	screenItems
 	screenReview
+	screenHelp
 )
 
 // Result is the user's final dashboard decision. Confirmed records intent only;
@@ -163,6 +191,35 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	if key.String() == "q" || key.String() == "ctrl+c" {
 		return m, tea.Quit
+	}
+	if m.screen == screenHelp {
+		switch key.String() {
+		case "i", "esc", "enter":
+			m.screen = m.returnScreen
+		case "up", "k":
+			if m.helpOffset > 0 {
+				m.helpOffset--
+			}
+		case "down", "j":
+			if m.helpOffset+m.visibleHelpRows() < len(manualLines()) {
+				m.helpOffset++
+			}
+		case "pgup":
+			m.helpOffset = max(0, m.helpOffset-m.visibleHelpRows())
+		case "pgdown":
+			m.helpOffset = min(max(0, len(manualLines())-m.visibleHelpRows()), m.helpOffset+m.visibleHelpRows())
+		case "g", "home":
+			m.helpOffset = 0
+		case "G", "end":
+			m.helpOffset = max(0, len(manualLines())-m.visibleHelpRows())
+		}
+		return m, nil
+	}
+	if key.String() == "i" {
+		m.returnScreen = m.screen
+		m.helpOffset = 0
+		m.screen = screenHelp
+		return m, nil
 	}
 	if m.screen == screenMode {
 		switch key.String() {
@@ -259,6 +316,13 @@ func (m Model) visibleItemRows() int {
 	return max(1, m.height-16)
 }
 
+func (m Model) visibleHelpRows() int {
+	if m.height <= 0 {
+		return 18
+	}
+	return max(3, m.height-10)
+}
+
 func (m *Model) selectAllSupported() {
 	for index, item := range m.items {
 		if m.canSelect(item) {
@@ -322,7 +386,7 @@ func (m Model) View() tea.View {
 	width := m.contentWidth()
 	view.WriteString(titleStyle.Render("SWEEPR"))
 	view.WriteString("  ")
-	view.WriteString(subtitleStyle.Render("developer cleanup dashboard"))
+	view.WriteString(renderBrandSubtitle("developer cleanup dashboard"))
 	view.WriteString("\n")
 	view.WriteString(ruleStyle.Width(width).Render(""))
 	view.WriteString("\n")
@@ -331,7 +395,9 @@ func (m Model) View() tea.View {
 		view.WriteString(warningStyle.Render("Terminal is small; enlarge it for the best layout."))
 		view.WriteString("\n")
 	}
-	if m.screen == screenMode {
+	if m.screen == screenHelp {
+		m.writeHelp(&view)
+	} else if m.screen == screenMode {
 		m.writeModes(&view)
 	} else if m.screen == screenReview {
 		m.writeReview(&view)
@@ -367,7 +433,81 @@ func (m Model) writeModes(view *strings.Builder) {
 		fmt.Fprintf(view, "%s%s\n", cursor, card)
 	}
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render("↑/k up   ↓/j down   enter choose   q quit"))
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Move"}, shortcut{"Enter", "Select mode"},
+		shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"},
+	))
+}
+
+func manualLines() []string {
+	return []string{
+		"START SAFELY",
+		"Choose Read only for your first scan. It previews selections and never changes files.",
+		"Review exact paths before choosing any cleanup action.",
+		"",
+		"CLEANUP MODES",
+		"Read only       Inspect items without changing anything.",
+		"Safe trash      Move files and folders to OS trash; Docker images are unavailable.",
+		"Permanent delete Remove selected files, folders, and Docker images permanently.",
+		"",
+		"RESULT CONTROLS",
+		"↑/↓ or j/k      Move between rows",
+		"PgUp/PgDn       Move one visible page",
+		"g/G             Jump to the first/last row",
+		"Space           Select or deselect the focused row",
+		"a / c           Select supported items / clear selection",
+		"d               Review selected targets before confirming",
+		"Esc             Return to the previous screen",
+		"q               Quit without confirming",
+		"",
+		"SCANNERS",
+		"dev-junk        Dependencies and build output that development tools can recreate.",
+		"os-junk         Folder OS metadata such as .DS_Store and Thumbs.db.",
+		"lang-cache      Global development caches; rebuilding may download data.",
+		"system-cache    User-owned OS caches and older temporary files.",
+		"docker          Dangling images; Docker must rebuild or download them after deletion.",
+		"",
+		"SAFETY NOTES",
+		"Safe trash does not reclaim space until the operating-system trash is emptied.",
+		"Trash can fail on special mounts; sweepr leaves those items untouched.",
+		"Permanent deletion cannot be undone through sweepr.",
+		"Full guide: github.com/Chamudu/sweepr/blob/master/docs/GETTING_STARTED.md",
+		"",
+		"LICENSE",
+		"sweepr Copyright (C) 2026 Chamudu",
+		"GPL-3.0-or-later; this program comes with ABSOLUTELY NO WARRANTY.",
+		"Source and license: github.com/Chamudu/sweepr",
+	}
+}
+
+func (m Model) writeHelp(view *strings.Builder) {
+	view.WriteString("\n")
+	view.WriteString(sectionTitleStyle.Render("Instruction manual"))
+	view.WriteString("\n")
+	view.WriteString(subtitleStyle.Render("Learn the controls and safety rules before cleaning."))
+	view.WriteString("\n\n")
+
+	lines := manualLines()
+	start := min(m.helpOffset, len(lines))
+	end := min(len(lines), start+m.visibleHelpRows())
+	var body strings.Builder
+	for _, line := range lines[start:end] {
+		if strings.ToUpper(line) == line && line != "" {
+			body.WriteString(sectionTitleStyle.Render(line))
+		} else {
+			body.WriteString(line)
+		}
+		body.WriteString("\n")
+	}
+	if len(lines) > m.visibleHelpRows() {
+		fmt.Fprintf(&body, "%s\n", scrollStyle.Render(fmt.Sprintf("Showing lines %d–%d of %d", start+1, end, len(lines))))
+	}
+	view.WriteString(panelStyle(m.contentWidth()).Render(strings.TrimSuffix(body.String(), "\n")))
+	view.WriteString("\n")
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Scroll"}, shortcut{"PgUp/PgDn", "Page"},
+		shortcut{"I/Esc/Enter", "Go back"}, shortcut{"Q", "Exit"},
+	))
 }
 
 func modeIcon(mode Mode) string {
@@ -465,7 +605,12 @@ func (m Model) writeItems(view *strings.Builder) {
 		view.WriteString(subtitleStyle.Render(truncateText(info.Description, m.contentWidth())))
 		view.WriteString("\n")
 	}
-	view.WriteString(helpStyle.Render("↑↓/jk move   pgup/pgdn page   space toggle   a all   c clear   d review   esc modes   q quit"))
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Move"}, shortcut{"Space", "Select"},
+		shortcut{"A", "Select all"}, shortcut{"C", "Clear"},
+		shortcut{"D", "Review"}, shortcut{"I", "Instructions"},
+		shortcut{"Esc", "Modes"}, shortcut{"Q", "Exit"},
+	))
 }
 
 func (m Model) writeReview(view *strings.Builder) {
@@ -498,17 +643,17 @@ func (m Model) writeReview(view *strings.Builder) {
 	switch m.mode {
 	case ModePermanent:
 		message = dangerStyle.Render("! PERMANENT: these resources cannot be restored.")
-		help = "enter permanently delete   esc back   ↑/↓ scroll   q quit"
+		help = renderShortcuts(shortcut{"Enter", "Delete permanently"}, shortcut{"Esc", "Go back"}, shortcut{"↑/↓", "Scroll"}, shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"})
 	case ModeTrash:
 		message = safeStyle.Render("♲ Recoverable until the operating-system trash is emptied.")
-		help = "enter move to trash   esc back   ↑/↓ scroll   q quit"
+		help = renderShortcuts(shortcut{"Enter", "Move to trash"}, shortcut{"Esc", "Go back"}, shortcut{"↑/↓", "Scroll"}, shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"})
 	default:
 		message = infoStyle.Render("◉ Read-only preview: no resources will change.")
-		help = "enter close preview   esc back   ↑/↓ scroll   q quit"
+		help = renderShortcuts(shortcut{"Enter", "Close preview"}, shortcut{"Esc", "Go back"}, shortcut{"↑/↓", "Scroll"}, shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"})
 	}
 	view.WriteString(message)
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render(help))
+	view.WriteString(help)
 }
 
 func (m Model) selectedBytes() int64 {

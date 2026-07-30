@@ -96,7 +96,8 @@ such as `node_modules` are direct matches, while ambiguous names (`build`,
 to three ancestors and never crosses the selected scan root, preventing an
 unrelated marker high in a broad tree from validating false positives.
 
-Every junk-finder (dev dirs, language caches, OS junk files, and Docker)
+Every junk-finder (dev dirs, development caches, folder OS metadata, system
+caches, and Docker)
 implements this. Adding a new junk type later = write one new
 file implementing `Scan`, add it to the registry in `scanner.go`. Nothing
 else changes.

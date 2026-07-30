@@ -1,0 +1,72 @@
+name: Bug report
+description: Report incorrect behavior, a crash, or a safety problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing sweepr. Never include private paths, usernames, access tokens, or other secrets in a report.
+  - type: input
+    id: version
+    attributes:
+      label: Sweepr version
+      description: Paste the output of `sweepr --version`.
+      placeholder: sweepr v0.1.0-rc.1 (...)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Read only
+        - Safe trash
+        - Permanent delete
+        - Command-line JSON
+        - Startup or setup
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Explain exactly what you selected and what happened.
+      placeholder: |
+        1. Started sweepr with ...
+        2. Selected ...
+        3. Pressed ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and output
+      description: Remove private paths and other sensitive information first.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I tested with disposable data and removed sensitive information from this report.
+          required: true

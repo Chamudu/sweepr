@@ -4,6 +4,10 @@
 
 A fast command-line tool to find and report reclaimable disk space on developer machines — build artifacts, OS-generated clutter, and global package-manager caches.
 
+New to command-line cleanup tools? Start with the
+[beginner getting-started guide](docs/GETTING_STARTED.md). It begins in
+read-only mode and explains every cleanup option before you change anything.
+
 ```
 Running scanner: dev-junk...
         node_modules  ./my-app/node_modules          312.44 MB  Last Mod: 2026-06-30
@@ -21,6 +25,12 @@ Total items: 4            Total size: 6.75 GB
 ```bash
 # Build the binary
 go build -o sweepr
+
+# Show version and platform information
+./sweepr --version
+
+# Show the license and source-code location
+./sweepr --license
 
 # Scan the current directory
 ./sweepr
@@ -62,9 +72,14 @@ selection, and `d` to review exact targets before confirming.
 | Scanner | Name | What It Finds |
 |---|---|---|
 | **Dev Junk** | `dev-junk` | Build artifacts inside project trees: `node_modules`, `dist`, `build`, `.next`, `target`, `__pycache__`, `.venv`, `venv`, `.pytest_cache`, `.poetry` |
-| **OS Junk** | `os-junk` | Files the OS drops into every directory: `.DS_Store` (macOS), `Thumbs.db`, `desktop.ini` (Windows) |
-| **Lang Cache** | `lang-cache` | Global package manager caches under `$HOME`: npm, pip, cargo, Go modules, Go build cache, yarn, pnpm, Gradle |
+| **Folder OS Metadata** | `os-junk` | Files the OS drops into selected directory trees: `.DS_Store` (macOS), `Thumbs.db`, `desktop.ini` (Windows) |
+| **Global Development Caches** | `lang-cache` | Package-manager and development caches under the user profile: npm, pip, cargo, Go, yarn, pnpm, Gradle, and others |
+| **System Caches & Temporary Files** | `system-cache` | Conservative user-owned OS caches: Linux thumbnails, macOS application caches, and Windows thumbnails plus older user-temp entries |
 | **Docker** | `docker` | Dangling Docker images, with friendly short IDs and exact image metadata |
+
+System cleanup is opt-in on the command line so an upgrade cannot silently
+expand an existing unattended deletion command. Use `--only system-cache`, or
+enable it explicitly from a global scope in the dashboard.
 
 Project-relative scanners automatically prune Timeshift `snapshots` trees and
 directories named `.snapshots`. Use repeatable `--exclude` flags for other
@@ -123,5 +138,24 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned phases.
 
-Current: **Phase 9** — the interactive dashboard and cross-platform safe-trash
-support are implemented. See the roadmap for remaining portability work.
+Current: **Release candidate (Phases 12–14)** — packaging, the complete
+interactive workflow, and conservative cross-platform system cleanup are being
+validated for `v0.1.0`.
+
+## License
+
+Sweepr is free and open-source software under
+[GPL-3.0-or-later](LICENSE). You may use, study, modify, and share it. If you
+distribute a modified version, you must provide its corresponding source under
+the same GPL terms. See [COPYRIGHT](COPYRIGHT) for the short notice and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency licenses.
+
+Copyright © 2026 [Chamudu (@Chamudu)](https://github.com/Chamudu).
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please report
+security-sensitive cleanup or path-handling problems using
+[SECURITY.md](SECURITY.md), not a public issue with exploit details.
+
+Testing a release candidate? Use the repository's **Release-candidate platform
+test** issue form to report your operating system, terminal, completed checks,
+and confusing behavior. Perform cleanup tests only with disposable data.

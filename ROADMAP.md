@@ -101,3 +101,57 @@
       first/last navigation, select-all, and clear-selection controls.
 - [x] Test resize handling, viewport visibility, cell-aware truncation, and
       mode-safe bulk selection.
+
+## Phase 12 — Release Readiness
+- [x] Add `--version` with linker-injected version, commit, build date,
+      toolchain, and target-platform information.
+- [x] Add a beginner getting-started and safety guide plus a maintainer release
+      checklist.
+- [x] Add tag-triggered GitHub release automation for Linux, macOS, and Windows
+      on amd64/arm64, including SHA-256 checksums and generated release notes.
+- [x] Adopt GPL-3.0-or-later, publish source directions, and preserve bundled
+      dependency notices in release archives.
+- [x] Add a scrollable beginner instruction manual and creator credit to the
+      interactive dashboard.
+- [ ] Review the beginner guide and publish `v0.1.0`.
+
+## Phase 13 — Complete Interactive Workflow
+- [x] Map CLI features to basic, advanced, and intentionally CLI-only UI
+      controls.
+- [x] Add a first-launch welcome and safety acknowledgement.
+- [x] Add target-directory, scope, and scanner selection before scanning.
+  - [x] Build a terminal-native, scrollable directory selector with explicit
+        confirmation, parent/home navigation, and permission-error reporting.
+  - [x] Define local, global, and combined scope compatibility with visible
+        notices for unavailable scanners and conflict-free opt-out controls.
+- [x] Add advanced exclusions, global-cache scope, minimum-size, and
+      minimum-age controls.
+- [x] Run scans from the dashboard with live per-scanner progress and
+      cancellation before results or cleanup controls appear.
+- [x] Store first-launch acknowledgement and safe preferences in the native
+      user configuration directory.
+- [ ] Test setup validation and the complete workflow on Linux, macOS, and
+      Windows before publishing `v0.1.0`.
+
+## Phase 14 — Conservative System Cleanup
+- [x] Rename ambiguous UI labels to Folder OS metadata and Global development
+      caches.
+- [x] Add a global System caches & temporary files scanner using user-owned,
+      platform-specific allowlists.
+- [x] Cover Linux XDG thumbnails, macOS per-user application caches, Windows
+      thumbnail databases, and Windows user-temp entries older than seven days.
+- [x] Exclude registries, logs, Downloads, trash, cloud content, symlinks, and
+      privileged system directories by design.
+- [ ] Verify native findings and safe-trash behavior on every release platform.
+  - [x] Linux: user-owned system-cache allowlist, native trash integration,
+        race detector, release build, and packaged documentation.
+  - [ ] macOS: native cache findings, Finder trash, and complete TUI workflow.
+  - [ ] Windows: native cache findings, Recycle Bin, and complete TUI workflow.
+
+## Phase 15 — Post-release Hardening
+- [ ] Expand cleanup tests around Docker command failures and multi-item
+      partial-success reporting.
+- [ ] Raise scanner and user-configuration coverage around errors, symlinks,
+      exclusions, and invalid persisted settings.
+- [ ] Add automated dependency-vulnerability scanning to CI.
+- [ ] Define supported release lines in `SECURITY.md` before `v1.0.0`.

@@ -71,3 +71,13 @@ func TestDeleteConfirmedSelectionOnlyForwardsConfirmedItems(t *testing.T) {
 		t.Fatalf("confirmed deletion received %#v; want only /tmp/selected", received)
 	}
 }
+
+func TestSystemCacheRequiresExplicitCLISelection(t *testing.T) {
+	if hasScanner(filterScanner(scanner.All(), "", ""), "system-cache") {
+		t.Fatal("default CLI scanner set unexpectedly includes system cleanup")
+	}
+	explicit := filterScanner(scanner.All(), "system-cache", "")
+	if len(explicit) != 1 || explicit[0].Name() != "system-cache" {
+		t.Fatalf("explicit system-cache selection returned %#v", explicit)
+	}
+}

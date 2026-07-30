@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"sweepr/dashboard"
+	"sweepr/internal/buildinfo"
+	"sweepr/internal/userconfig"
 	"sweepr/remover"
 	"sweepr/scanner"
 	"sweepr/trash"
@@ -105,10 +107,6 @@ func contains(list []string, target string) bool {
 
 func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 
-	if only == "" && skip == "" {
-		return all
-	}
-
 	var result []scanner.Scanner
 
 	var onlyList []string
@@ -122,6 +120,11 @@ func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 	}
 
 	for _, s := range all {
+		// System cleanup requires explicit selection. A new release must not
+		// silently expand an existing unattended `--delete --yes` command.
+		if only == "" && s.Name() == "system-cache" {
+			continue
+		}
 		if only != "" && !contains(onlyList, s.Name()) {
 			continue
 		}
@@ -399,6 +402,27 @@ func runScanJobs(jobs []scanJob, progressEnabled, jsonOutput bool) []scanner.Ite
 	return allItems
 }
 
+func runScanJobsToDashboard(jobs []scanJob, events chan<- dashboard.ScanEvent) {
+	var workers sync.WaitGroup
+	workers.Add(len(jobs))
+	for _, job := range jobs {
+		job := job
+		go func() {
+			defer workers.Done()
+			started := time.Now()
+			items, err := job.run(func(progress scanner.Progress) {
+				select {
+				case events <- dashboard.ScanEvent{Name: job.name, Progress: progress}:
+				default:
+				}
+			})
+			events <- dashboard.ScanEvent{Name: job.name, Items: items, Err: err, Duration: time.Since(started), Done: true}
+		}()
+	}
+	workers.Wait()
+	close(events)
+}
+
 func main() {
 
 	// FLAGS (only, skip, minSize, minAge)
@@ -413,10 +437,23 @@ func main() {
 	tuiFlag := flag.Bool("tui", false, "open scan results in the interactive terminal dashboard")
 	noProgress := flag.Bool("no-progress", false, "disable interactive scan progress")
 	includeGlobal := flag.Bool("include-global", false, "include global language caches with an explicit root")
+	versionFlag := flag.Bool("version", false, "print version and build information")
+	licenseFlag := flag.Bool("license", false, "print license and source-code information")
 	var excludes stringListFlag
 	flag.Var(&excludes, "exclude", "exclude a path from project scanning (repeatable)")
 
 	flag.Parse()
+	if *versionFlag {
+		fmt.Println(buildinfo.String())
+		return
+	}
+	if *licenseFlag {
+		fmt.Println("sweepr Copyright (C) 2026 Chamudu")
+		fmt.Println("License: GPL-3.0-or-later")
+		fmt.Println("This program comes with ABSOLUTELY NO WARRANTY.")
+		fmt.Println("Source: https://github.com/Chamudu/sweepr")
+		return
+	}
 
 	if *deleteFlag && *trashFlag {
 		fmt.Fprintln(os.Stderr, "Error: --delete and --trash are mutually exclusive")
@@ -438,6 +475,83 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: --trash currently requires --tui")
 		os.Exit(1)
 	}
+	var tuiSetup *dashboard.ScanSetup
+	if *tuiFlag {
+		if !isInteractiveTerminal(os.Stdin) || !isInteractiveTerminal(os.Stdout) {
+			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
+			os.Exit(1)
+		}
+		welcomeComplete, err := userconfig.WelcomeComplete()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not read UI preferences: %v\n", err)
+		}
+		if !welcomeComplete {
+			continued, err := dashboard.RunWelcome()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error running welcome screen: %v\n", err)
+				os.Exit(1)
+			}
+			if !continued {
+				return
+			}
+			if err := userconfig.MarkWelcomeComplete(); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not save UI preferences: %v\n", err)
+			}
+		}
+		initialRoot := "."
+		if flag.NArg() > 0 {
+			initialRoot = flag.Arg(0)
+		}
+		initialSetup := dashboard.DefaultScanSetup(initialRoot)
+		if saved, found, err := userconfig.LoadPreferences(); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not load saved scan settings: %v\n", err)
+		} else if found {
+			if scope, valid := dashboard.ParseScanScope(saved.Scope); valid {
+				initialSetup.Root, initialSetup.Scope = saved.Root, scope
+				initialSetup.Enabled = make(map[string]bool)
+				for _, name := range saved.Enabled {
+					initialSetup.Enabled[name] = true
+				}
+				initialSetup.MinSize, initialSetup.MinAge = saved.MinSize, saved.MinAge
+				initialSetup.Excludes = append([]string(nil), saved.Excludes...)
+			}
+		}
+		// Saved values are defaults, never stronger than settings explicitly
+		// supplied for this invocation.
+		if flag.NArg() > 0 {
+			initialSetup.Root = initialRoot
+		}
+		if *minSize != "" {
+			initialSetup.MinSize = *minSize
+		}
+		if *minAge > 0 {
+			initialSetup.MinAge = *minAge
+		}
+		if len(excludes) > 0 {
+			initialSetup.Excludes = append([]string(nil), excludes...)
+		}
+		setup, start, err := dashboard.RunScanSetup(initialSetup)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error running scan setup: %v\n", err)
+			os.Exit(1)
+		}
+		if !start {
+			return
+		}
+		if err := userconfig.SavePreferences(userconfig.Preferences{
+			Root: setup.Root, Scope: setup.Scope.String(), Enabled: setup.EnabledScannerNames(),
+			MinSize: setup.MinSize, MinAge: setup.MinAge, Excludes: setup.Excludes,
+		}); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not save scan settings: %v\n", err)
+		}
+		tuiSetup = &setup
+		*only = strings.Join(setup.EnabledScannerNames(), ",")
+		*skip = ""
+		*includeGlobal = setup.Scope != dashboard.ScopeLocal
+		*minSize = setup.MinSize
+		*minAge = setup.MinAge
+		excludes = stringListFlag(append([]string(nil), setup.Excludes...))
+	}
 
 	var minSizeBytes int64
 	if *minSize != "" {
@@ -454,7 +568,10 @@ func main() {
 	// LangCacheScanner ignores this value and always checks $HOME.
 	root := "."
 	rootProvided := flag.NArg() > 0
-	if rootProvided {
+	if tuiSetup != nil {
+		root = tuiSetup.Root
+		rootProvided = true
+	} else if rootProvided {
 		root = flag.Arg(0)
 	}
 
@@ -492,7 +609,7 @@ func main() {
 
 	scanners := filterScanner(scanner.All(), *only, effectiveSkip)
 
-	if !*jsonFlag {
+	if !*jsonFlag && !*tuiFlag {
 		header(root, scanners)
 	}
 
@@ -534,7 +651,7 @@ func main() {
 		})
 	}
 
-	if !*jsonFlag && len(scanJobs) > 0 {
+	if !*jsonFlag && !*tuiFlag && len(scanJobs) > 0 {
 		jobNames := make([]string, 0, len(scanJobs))
 		for _, job := range scanJobs {
 			jobNames = append(jobNames, job.name)
@@ -542,13 +659,27 @@ func main() {
 		fmt.Printf("\nRunning scanners concurrently: %s...\n", strings.Join(jobNames, ", "))
 	}
 
-	allItems = runScanJobs(
-		scanJobs,
-		!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
-		*jsonFlag,
-	)
+	if *tuiFlag {
+		jobNames := make([]string, 0, len(scanJobs))
+		for _, job := range scanJobs {
+			jobNames = append(jobNames, job.name)
+		}
+		events := make(chan dashboard.ScanEvent, 64)
+		go runScanJobsToDashboard(scanJobs, events)
+		var cancelled bool
+		allItems, cancelled, err = dashboard.RunScanProgress(jobNames, events)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error running scan progress: %v\n", err)
+			os.Exit(1)
+		}
+		if cancelled {
+			return
+		}
+	} else {
+		allItems = runScanJobs(scanJobs, !*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr), *jsonFlag)
+	}
 
-	if !*jsonFlag {
+	if !*jsonFlag && !*tuiFlag {
 		fmt.Printf("\nScan Completed\n\n")
 	}
 
@@ -592,10 +723,6 @@ func main() {
 	}
 
 	if *tuiFlag {
-		if !isInteractiveTerminal(os.Stdin) || !isInteractiveTerminal(os.Stdout) {
-			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
-			os.Exit(1)
-		}
 		initialMode := dashboard.ModeReadOnly
 		if *trashFlag {
 			initialMode = dashboard.ModeTrash
