@@ -86,3 +86,9 @@
 - [x] Add **Safe Trash Support** using native cross-platform adapters: GIO on
       Linux, Finder/AppleScript on macOS, and Recycle Bin APIs through
       PowerShell on Windows. Trash failures never fall back to permanent removal.
+
+## Phase 10 — Portability & Release Confidence
+- [x] Add GitHub Actions CI for native Linux, macOS, and Windows tests, vet, and
+      builds, plus race detection on Linux.
+- [ ] Detect Windows-specific global language-cache locations.
+- [ ] Run native scratch-file trash integration tests on each supported OS.

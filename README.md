@@ -1,5 +1,7 @@
 # sweepr
 
+[![CI](https://github.com/Chamudu/sweepr/actions/workflows/ci.yml/badge.svg)](https://github.com/Chamudu/sweepr/actions/workflows/ci.yml)
+
 A fast command-line tool to find and report reclaimable disk space on developer machines — build artifacts, OS-generated clutter, and global package-manager caches.
 
 ```
@@ -96,6 +98,10 @@ if you explicitly want to remove selected dangling images. Moving filesystem
 items to trash does not reclaim disk space until the trash is emptied.
 
 Windows cache path support is planned for a future release.
+
+Every push and pull request to `master` runs tests, vet, and a native build on
+GitHub-hosted Linux, macOS, and Windows runners. The Linux job additionally runs
+Go's race detector.
 
 ## Architecture
 
