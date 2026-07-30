@@ -33,8 +33,10 @@ func TestCommandForKeepsPathInSeparateArgument(t *testing.T) {
 			if cmd.name != test.name {
 				t.Fatalf("command name = %q; want %q", cmd.name, test.name)
 			}
-			if !slices.Contains(cmd.args, item.Path) {
-				t.Fatalf("path was not passed as a separate argument: %#v", cmd.args)
+			pathIsArgument := slices.Contains(cmd.args, item.Path)
+			pathIsEnvironment := slices.Contains(cmd.env, "SWEEPR_TRASH_PATH="+item.Path)
+			if !pathIsArgument && !pathIsEnvironment {
+				t.Fatalf("path was not passed separately from program text: args=%#v env=%#v", cmd.args, cmd.env)
 			}
 		})
 	}
