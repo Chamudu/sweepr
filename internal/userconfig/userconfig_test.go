@@ -3,6 +3,7 @@ package userconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -19,12 +20,17 @@ func TestSaveAndLoadWelcomeAcknowledgement(t *testing.T) {
 	if got != want {
 		t.Fatalf("loaded config = %#v; want %#v", got, want)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm()&0o077 != 0 {
-		t.Fatalf("config permissions = %o; want no group/other permissions", info.Mode().Perm())
+	// Windows protects files with ACLs rather than Unix owner/group/other mode
+	// bits. Go therefore reports synthesized permissions there, so this mode
+	// assertion is meaningful only on Unix-like systems.
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm()&0o077 != 0 {
+			t.Fatalf("config permissions = %o; want no group/other permissions", info.Mode().Perm())
+		}
 	}
 }
 
