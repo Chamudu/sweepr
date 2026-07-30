@@ -68,7 +68,16 @@ var (
 	safeStyle         = lipgloss.NewStyle().Foreground(greenColor).Bold(true)
 	infoStyle         = lipgloss.NewStyle().Foreground(cyanColor)
 	shortcutKeyStyle  = lipgloss.NewStyle().Bold(true).Foreground(cyanColor)
+	creatorStyle      = lipgloss.NewStyle().Italic(true).Foreground(mutedColor)
 )
+
+func renderBrandSubtitle(label string) string {
+	credit := creatorStyle.Render("by Chamudu")
+	if label == "" {
+		return credit
+	}
+	return subtitleStyle.Render(label+" • ") + credit
+}
 
 type shortcut struct {
 	key    string
@@ -377,7 +386,7 @@ func (m Model) View() tea.View {
 	width := m.contentWidth()
 	view.WriteString(titleStyle.Render("SWEEPR"))
 	view.WriteString("  ")
-	view.WriteString(subtitleStyle.Render("developer cleanup dashboard • by Chamudu"))
+	view.WriteString(renderBrandSubtitle("developer cleanup dashboard"))
 	view.WriteString("\n")
 	view.WriteString(ruleStyle.Width(width).Render(""))
 	view.WriteString("\n")

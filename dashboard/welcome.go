@@ -42,7 +42,7 @@ func (m WelcomeModel) View() tea.View {
 	var view strings.Builder
 	view.WriteString(titleStyle.Render("WELCOME TO SWEEPR"))
 	view.WriteString("  ")
-	view.WriteString(subtitleStyle.Render("by Chamudu"))
+	view.WriteString(renderBrandSubtitle(""))
 	view.WriteString("\n")
 	view.WriteString(ruleStyle.Width(m.welcomeWidth()).Render(""))
 	view.WriteString("\n\n")

@@ -136,7 +136,7 @@ func (m DirectoryModel) View() tea.View {
 	var view strings.Builder
 	view.WriteString(titleStyle.Render("SWEEPR"))
 	view.WriteString("  ")
-	view.WriteString(subtitleStyle.Render("choose a scan directory • by Chamudu"))
+	view.WriteString(renderBrandSubtitle("choose a scan directory"))
 	view.WriteString("\n")
 	view.WriteString(ruleStyle.Width(m.directoryWidth()).Render(""))
 	view.WriteString("\n\n")

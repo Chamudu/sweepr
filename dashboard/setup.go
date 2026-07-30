@@ -218,7 +218,7 @@ func (m SetupModel) View() tea.View {
 	var view strings.Builder
 	view.WriteString(titleStyle.Render("SWEEPR"))
 	view.WriteString("  ")
-	view.WriteString(subtitleStyle.Render("scan setup • by Chamudu"))
+	view.WriteString(renderBrandSubtitle("scan setup"))
 	view.WriteString("\n")
 	view.WriteString(ruleStyle.Width(m.setupWidth()).Render(""))
 	view.WriteString("\n\n")
