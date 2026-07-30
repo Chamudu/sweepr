@@ -128,7 +128,7 @@ func TestReviewExplainsWhetherDeletionIsEnabled(t *testing.T) {
 	destructive := itemsModel([]scanner.Item{item}, ModePermanent)
 	destructive.toggleCurrent()
 	destructive.screen = screenReview
-	if content := destructive.View().Content; !strings.Contains(content, "permanently delete") {
+	if content := destructive.View().Content; !strings.Contains(content, "Delete permanently") {
 		t.Fatalf("deletion review omitted its warning: %q", content)
 	}
 }

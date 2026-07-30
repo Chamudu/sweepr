@@ -67,7 +67,23 @@ var (
 	dangerStyle       = lipgloss.NewStyle().Foreground(redColor).Bold(true)
 	safeStyle         = lipgloss.NewStyle().Foreground(greenColor).Bold(true)
 	infoStyle         = lipgloss.NewStyle().Foreground(cyanColor)
+	shortcutKeyStyle  = lipgloss.NewStyle().Bold(true).Foreground(cyanColor)
 )
+
+type shortcut struct {
+	key    string
+	action string
+}
+
+// renderShortcuts gives every screen the same visual grammar: emphasized keys
+// followed by plain-language actions, separated into easy-to-scan groups.
+func renderShortcuts(shortcuts ...shortcut) string {
+	parts := make([]string, 0, len(shortcuts))
+	for _, item := range shortcuts {
+		parts = append(parts, shortcutKeyStyle.Render(item.key)+" "+helpStyle.Render(item.action))
+	}
+	return strings.Join(parts, helpStyle.Render("  •  "))
+}
 
 func modeCardStyle(width int, active bool) lipgloss.Style {
 	color := borderColor
@@ -408,7 +424,10 @@ func (m Model) writeModes(view *strings.Builder) {
 		fmt.Fprintf(view, "%s%s\n", cursor, card)
 	}
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render("↑/k up   ↓/j down   enter choose   i manual   q quit"))
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Move"}, shortcut{"Enter", "Select mode"},
+		shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"},
+	))
 }
 
 func manualLines() []string {
@@ -470,7 +489,10 @@ func (m Model) writeHelp(view *strings.Builder) {
 	}
 	view.WriteString(panelStyle(m.contentWidth()).Render(strings.TrimSuffix(body.String(), "\n")))
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render("↑↓/jk scroll   pgup/pgdn page   g/G first/last   i/esc/enter back   q quit"))
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Scroll"}, shortcut{"PgUp/PgDn", "Page"},
+		shortcut{"I/Esc/Enter", "Go back"}, shortcut{"Q", "Exit"},
+	))
 }
 
 func modeIcon(mode Mode) string {
@@ -568,7 +590,12 @@ func (m Model) writeItems(view *strings.Builder) {
 		view.WriteString(subtitleStyle.Render(truncateText(info.Description, m.contentWidth())))
 		view.WriteString("\n")
 	}
-	view.WriteString(helpStyle.Render("↑↓/jk move   pgup/pgdn page   space toggle   a all   c clear   d review   i manual   esc modes   q quit"))
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Move"}, shortcut{"Space", "Select"},
+		shortcut{"A", "Select all"}, shortcut{"C", "Clear"},
+		shortcut{"D", "Review"}, shortcut{"I", "Instructions"},
+		shortcut{"Esc", "Modes"}, shortcut{"Q", "Exit"},
+	))
 }
 
 func (m Model) writeReview(view *strings.Builder) {
@@ -601,17 +628,17 @@ func (m Model) writeReview(view *strings.Builder) {
 	switch m.mode {
 	case ModePermanent:
 		message = dangerStyle.Render("! PERMANENT: these resources cannot be restored.")
-		help = "enter permanently delete   esc back   ↑/↓ scroll   i manual   q quit"
+		help = renderShortcuts(shortcut{"Enter", "Delete permanently"}, shortcut{"Esc", "Go back"}, shortcut{"↑/↓", "Scroll"}, shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"})
 	case ModeTrash:
 		message = safeStyle.Render("♲ Recoverable until the operating-system trash is emptied.")
-		help = "enter move to trash   esc back   ↑/↓ scroll   i manual   q quit"
+		help = renderShortcuts(shortcut{"Enter", "Move to trash"}, shortcut{"Esc", "Go back"}, shortcut{"↑/↓", "Scroll"}, shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"})
 	default:
 		message = infoStyle.Render("◉ Read-only preview: no resources will change.")
-		help = "enter close preview   esc back   ↑/↓ scroll   i manual   q quit"
+		help = renderShortcuts(shortcut{"Enter", "Close preview"}, shortcut{"Esc", "Go back"}, shortcut{"↑/↓", "Scroll"}, shortcut{"I", "Instructions"}, shortcut{"Q", "Exit"})
 	}
 	view.WriteString(message)
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render(help))
+	view.WriteString(help)
 }
 
 func (m Model) selectedBytes() int64 {

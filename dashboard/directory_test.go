@@ -49,7 +49,7 @@ func TestDirectorySelectorRequiresExplicitSelection(t *testing.T) {
 
 func TestDirectorySelectorViewExplainsControls(t *testing.T) {
 	content := NewDirectoryModel(t.TempDir()).View().Content
-	for _, want := range []string{"Directory selector", "select this folder", "by Chamudu"} {
+	for _, want := range []string{"Directory selector", "Select this folder", "by Chamudu"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("selector did not contain %q: %q", want, content)
 		}

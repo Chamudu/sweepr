@@ -169,7 +169,11 @@ func (m DirectoryModel) View() tea.View {
 		view.WriteString(dangerStyle.Render("Cannot open folder: " + m.err.Error()))
 		view.WriteString("\n")
 	}
-	view.WriteString(helpStyle.Render("enter/→ open   ←/backspace parent   ~ home   space/s select this folder   esc cancel"))
+	view.WriteString(renderShortcuts(
+		shortcut{"Enter/→", "Open folder"}, shortcut{"←/Backspace", "Parent folder"},
+		shortcut{"~", "Home"}, shortcut{"Space/S", "Select this folder"},
+		shortcut{"Esc", "Cancel"},
+	))
 
 	style := appStyle
 	if m.width > 0 {

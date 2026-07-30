@@ -72,7 +72,10 @@ func (m WelcomeModel) View() tea.View {
 		view.WriteString("\n")
 	}
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render("↑/↓ choose   enter confirm   esc/q exit"))
+	view.WriteString(renderShortcuts(
+		shortcut{"↑/↓", "Choose"}, shortcut{"Enter", "Confirm"},
+		shortcut{"Esc/Q", "Exit"},
+	))
 
 	style := appStyle
 	if m.width > 0 {
