@@ -10,7 +10,9 @@ everything.
 sweepr/
 ├── go.mod
 ├── main.go              # CLI entrypoint: flags, wiring, output
+├── dashboard/           # Bubble Tea mode, selection, and review state machine
 ├── remover/             # resource-specific filesystem and Docker deletion
+├── trash/               # cross-platform recoverable filesystem removal
 ├── scanner/
 │   ├── scanner.go        # Item struct + Scanner interface + registry
 │   ├── util.go           # shared helpers (dirStats, fileStats)
@@ -105,6 +107,16 @@ Filesystem resources use `os.Remove` / `os.RemoveAll`, while Docker images use
 `docker image rm`. This keeps non-filesystem identifiers away from filesystem
 deletion and prevents `main.go` from accumulating resource-specific commands.
 
+Recoverable filesystem removal is separate in `trash/`. It selects a native OS
+adapter at runtime: GIO on Linux, Finder automation on macOS, and the Recycle
+Bin API through PowerShell on Windows. It supports only files and directories,
+fails closed when unavailable, and never falls back to permanent removal.
+
+The Bubble Tea dashboard models action choice as one `Mode` value: read-only,
+safe trash, or permanent deletion. Its state machine moves through mode choice,
+item selection, and exact-target review before returning a confirmed `Result`
+to `main`. The dashboard owns interaction but not side effects.
+
 ## Data flow
 
 ```
@@ -121,11 +133,13 @@ main.go
   │
   ├─ print report (table or --json)
   │
-  └─ if --delete:
-         confirm (unless --yes)
-         for each supported resource: choose deletion by ResourceType
-         skip resource types without an implemented deletion mechanism
-         print freed-space summary
+  └─ choose output path:
+       ├─ table / JSON
+       ├─ classic --delete confirmation
+       └─ TUI: choose mode → select → review → confirm
+            ├─ read-only: no side effect
+            ├─ trash: native OS trash for filesystem items
+            └─ permanent: remover selected by ResourceType
 ```
 
 ## Walking Strategy & Performance
@@ -142,8 +156,11 @@ and Docker scanners remain independent because they do not walk the project root
   directories are pruned automatically. Repeatable `--exclude` paths are
   normalized relative to the scan root and matched on path-component boundaries.
 
-## Concurrency (for later, not v1)
-Once the sequential scanning is solid, a natural speedup is to run scans concurrently using `sync.WaitGroup` + goroutines. Since global caches and project directories reside in independent parts of the filesystem, concurrency will leverage modern multi-core NVMe drives effectively.
+## Concurrency
+The shared project walk, global-cache scanner, and Docker scanner run as
+independent jobs using goroutines and `sync.WaitGroup`. Workers send progress
+and final results over channels; the main goroutine alone aggregates results
+and writes terminal output, preventing slice races and interleaved rendering.
 
 ## Why this supports "add a UI later"
 - CLI output and deletion logic in `main.go` only *consumes* `[]Item` — a TUI (`bubbletea`) or a local web server (`net/http` + a JS frontend) would do the same: call `scanner.All()`, get `[]Item`, render it their own way, call the same delete logic on user-selected items.

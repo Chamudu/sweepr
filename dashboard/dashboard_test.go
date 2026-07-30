@@ -14,11 +14,17 @@ func press(model Model, key tea.Key) Model {
 	return next.(Model)
 }
 
+func itemsModel(items []scanner.Item, mode Mode) Model {
+	model := NewModel(items, mode)
+	model.screen = screenItems
+	return model
+}
+
 func TestUpdateNavigatesAndTogglesWithKeyboardEvents(t *testing.T) {
-	model := NewModel([]scanner.Item{
+	model := itemsModel([]scanner.Item{
 		{Kind: "first", SizeBytes: 10},
 		{Kind: "second", SizeBytes: 20},
-	}, false)
+	}, ModeReadOnly)
 
 	model = press(model, tea.Key{Code: tea.KeyDown})
 	if model.cursor != 1 {
@@ -38,10 +44,10 @@ func TestUpdateNavigatesAndTogglesWithKeyboardEvents(t *testing.T) {
 }
 
 func TestToggleCurrentTracksSelectionAndBytes(t *testing.T) {
-	model := NewModel([]scanner.Item{
+	model := itemsModel([]scanner.Item{
 		{Kind: "npm-cache", SizeBytes: 1024},
 		{Kind: "go-build-cache", SizeBytes: 2048},
-	}, false)
+	}, ModeReadOnly)
 
 	model.toggleCurrent()
 	if len(model.selected) != 1 || model.selectedBytes() != 1024 {
@@ -57,11 +63,12 @@ func TestToggleCurrentTracksSelectionAndBytes(t *testing.T) {
 }
 
 func TestReviewRequiresSelectionAndSupportsBackAndConfirm(t *testing.T) {
-	model := NewModel([]scanner.Item{{
-		Path:      "/tmp/cache",
-		Kind:      "test-cache",
-		SizeBytes: 4096,
-	}}, true)
+	model := itemsModel([]scanner.Item{{
+		Path:         "/tmp/cache",
+		Kind:         "test-cache",
+		SizeBytes:    4096,
+		ResourceType: scanner.ResourceDirectory,
+	}}, ModePermanent)
 
 	model = press(model, tea.Key{Code: 'd', Text: "d"})
 	if model.screen != screenItems {
@@ -94,11 +101,11 @@ func TestReviewRequiresSelectionAndSupportsBackAndConfirm(t *testing.T) {
 }
 
 func TestViewUsesDisplayNameForNonFilesystemResources(t *testing.T) {
-	model := NewModel([]scanner.Item{{
+	model := itemsModel([]scanner.Item{{
 		Path:        "sha256:abc123",
 		DisplayName: "dangling image abc123",
 		Kind:        "docker-image",
-	}}, false)
+	}}, ModeReadOnly)
 
 	content := model.View().Content
 	if !strings.Contains(content, "dangling image abc123") {
@@ -107,19 +114,44 @@ func TestViewUsesDisplayNameForNonFilesystemResources(t *testing.T) {
 }
 
 func TestReviewExplainsWhetherDeletionIsEnabled(t *testing.T) {
-	item := scanner.Item{Path: "/tmp/cache", Kind: "cache"}
+	item := scanner.Item{Path: "/tmp/cache", Kind: "cache", ResourceType: scanner.ResourceDirectory}
 
-	readOnly := NewModel([]scanner.Item{item}, false)
+	readOnly := itemsModel([]scanner.Item{item}, ModeReadOnly)
 	readOnly.toggleCurrent()
 	readOnly.screen = screenReview
 	if content := readOnly.View().Content; !strings.Contains(content, "Read-only mode") {
 		t.Fatalf("read-only review omitted its safety status: %q", content)
 	}
 
-	destructive := NewModel([]scanner.Item{item}, true)
+	destructive := itemsModel([]scanner.Item{item}, ModePermanent)
 	destructive.toggleCurrent()
 	destructive.screen = screenReview
 	if content := destructive.View().Content; !strings.Contains(content, "permanently delete") {
 		t.Fatalf("deletion review omitted its warning: %q", content)
+	}
+}
+
+func TestModeChooserAndTrashRestrictions(t *testing.T) {
+	items := []scanner.Item{
+		{Path: "/tmp/cache", ResourceType: scanner.ResourceDirectory},
+		{Path: "sha256:abc", ResourceType: scanner.ResourceDockerImage},
+	}
+	model := NewModel(items, ModeTrash)
+	if model.screen != screenMode || model.mode != ModeTrash {
+		t.Fatalf("initial mode state = (%v, %v); want mode chooser with trash highlighted", model.screen, model.mode)
+	}
+
+	model = press(model, tea.Key{Code: tea.KeyEnter})
+	if model.screen != screenItems {
+		t.Fatal("enter did not continue from mode chooser to items")
+	}
+
+	model.cursor = 1
+	model = press(model, tea.Key{Code: tea.KeySpace})
+	if len(model.selected) != 0 {
+		t.Fatal("trash mode allowed a Docker image to be selected")
+	}
+	if content := model.View().Content; !strings.Contains(content, "[-]") {
+		t.Fatalf("trash-incompatible Docker row was not marked unavailable: %q", content)
 	}
 }

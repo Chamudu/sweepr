@@ -78,8 +78,11 @@
           selection state, selected-byte totals, and an alternate-screen view.
     - [x] Add a review screen with exact targets, total size, back navigation,
           and explicit confirmation intent without performing deletion.
-    - [x] Connect a confirmed dashboard selection to the resource-aware remover,
-          gated behind the explicit `--tui --delete` combination.
+    - [x] Connect confirmed dashboard selections to the resource-aware remover.
+    - [x] Add an in-dashboard mode chooser for read-only, safe trash, and
+          permanent deletion, with mode-specific warnings and restrictions.
   - **Local web UI:** `net/http` server exposing `/scan` and `/delete`, with a small HTML/JS frontend.
   - **Native GUI:** `fyne.io/fyne`.
-- [ ] Add **Safe Trash Support**: Integrate trash libraries (like `github.com/electron/trash` equivalents, or native AppleScript/gio shell-outs) to move items to system trash instead of calling `RemoveAll`.
+- [x] Add **Safe Trash Support** using native cross-platform adapters: GIO on
+      Linux, Finder/AppleScript on macOS, and Recycle Bin APIs through
+      PowerShell on Windows. Trash failures never fall back to permanent removal.

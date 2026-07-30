@@ -40,6 +40,14 @@ go build -o sweepr
 
 # Include global language caches while scanning an explicit project root
 ./sweepr --include-global /path/to/projects
+
+# Open the interactive dashboard and choose read-only, safe-trash, or
+# permanent-delete mode inside the UI
+./sweepr --tui
+
+# Open the dashboard with a cleanup mode highlighted initially
+./sweepr --tui --trash
+./sweepr --tui --delete
 ```
 
 ## What It Scans
@@ -49,6 +57,7 @@ go build -o sweepr
 | **Dev Junk** | `dev-junk` | Build artifacts inside project trees: `node_modules`, `dist`, `build`, `.next`, `target`, `__pycache__`, `.venv`, `venv`, `.pytest_cache`, `.poetry` |
 | **OS Junk** | `os-junk` | Files the OS drops into every directory: `.DS_Store` (macOS), `Thumbs.db`, `desktop.ini` (Windows) |
 | **Lang Cache** | `lang-cache` | Global package manager caches under `$HOME`: npm, pip, cargo, Go modules, Go build cache, yarn, pnpm, Gradle |
+| **Docker** | `docker` | Dangling Docker images, with friendly short IDs and exact image metadata |
 
 Project-relative scanners automatically prune Timeshift `snapshots` trees and
 directories named `.snapshots`. Use repeatable `--exclude` flags for other
@@ -79,9 +88,14 @@ This avoids traversing large project trees twice while preserving standalone
 |---|---|
 | Linux | ✅ Fully supported |
 | macOS | ✅ Fully supported |
-| Windows | ⚠️ Partial — `dev-junk` and `os-junk` scanners work, but `lang-cache` does not yet detect Windows cache locations (`%AppData%\npm-cache` etc.) |
+| Windows | ⚠️ Partial — project scanners and Recycle Bin trash work, but `lang-cache` does not yet detect Windows cache locations (`%AppData%\npm-cache` etc.) |
 
-Windows cache path support is planned for a future release via Go build constraints.
+Safe-trash mode uses GIO on Linux, Finder on macOS, and the Recycle Bin API on
+Windows. Docker images cannot be moved to OS trash; choose permanent deletion
+if you explicitly want to remove selected dangling images. Moving filesystem
+items to trash does not reclaim disk space until the trash is emptied.
+
+Windows cache path support is planned for a future release.
 
 ## Architecture
 
@@ -96,6 +110,5 @@ The tool uses a registry-based plugin pattern:
 
 This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned phases.
 
-Current: **Phase 7** — Docker dangling-image scanning and confirmed deletion are complete.
-
-Next: **Phase 8** — concurrency and walking optimizations.
+Current: **Phase 9** — the interactive dashboard and cross-platform safe-trash
+support are implemented. See the roadmap for remaining portability work.

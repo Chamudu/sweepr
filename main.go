@@ -14,6 +14,7 @@ import (
 	"sweepr/dashboard"
 	"sweepr/remover"
 	"sweepr/scanner"
+	"sweepr/trash"
 	"sync"
 	"time"
 	"unicode"
@@ -221,6 +222,29 @@ func deleteConfirmedSelection(result dashboard.Result, deleteItems func([]scanne
 	return true
 }
 
+func trashJunk(items []scanner.Item) {
+	var movedCount, failedCount int
+	var retainedBytes int64
+	fmt.Println()
+	for _, item := range items {
+		if err := trash.Move(item); err != nil {
+			fmt.Printf("Error moving %s to trash: %v\n", displayTarget(item), err)
+			failedCount++
+			continue
+		}
+		movedCount++
+		retainedBytes += item.SizeBytes
+		fmt.Printf("Moved to trash: %s (%s)\n", displayTarget(item), formatSize(item.SizeBytes))
+	}
+
+	fmt.Printf("\nMoved %d items (%s) to trash. Space is reclaimed only after trash is emptied.\n",
+		movedCount, formatSize(retainedBytes))
+	if failedCount > 0 {
+		fmt.Printf("Warning: failed to trash %d items. They were not permanently deleted.\n", failedCount)
+		os.Exit(1)
+	}
+}
+
 func header(root string, scanners []scanner.Scanner) {
 	home, _ := os.UserHomeDir()
 
@@ -382,7 +406,8 @@ func main() {
 	skip := flag.String("skip", "", "skip this scanner by name")
 	minSize := flag.String("min-size", "", "minimum size of items to report (e.g. 10MB, 500KB)")
 	minAge := flag.Int("min-age", 0, "minimum age of items in days to report")
-	deleteFlag := flag.Bool("delete", false, "Delete found juck items")
+	deleteFlag := flag.Bool("delete", false, "permanently delete selected items (preselected mode with --tui)")
+	trashFlag := flag.Bool("trash", false, "preselect safe-trash mode (requires --tui)")
 	yesFlag := flag.Bool("yes", false, "skip confirmation prompt (Dangerous!)")
 	jsonFlag := flag.Bool("json", false, "format output as JSON")
 	tuiFlag := flag.Bool("tui", false, "open scan results in the interactive terminal dashboard")
@@ -393,8 +418,12 @@ func main() {
 
 	flag.Parse()
 
-	if *jsonFlag && *deleteFlag {
-		fmt.Fprintln(os.Stderr, "Error: cannot use --json and --delete together")
+	if *deleteFlag && *trashFlag {
+		fmt.Fprintln(os.Stderr, "Error: --delete and --trash are mutually exclusive")
+		os.Exit(1)
+	}
+	if *jsonFlag && (*deleteFlag || *trashFlag) {
+		fmt.Fprintln(os.Stderr, "Error: --json cannot be combined with --delete or --trash")
 		os.Exit(1)
 	}
 	if *tuiFlag && *jsonFlag {
@@ -403,6 +432,10 @@ func main() {
 	}
 	if *tuiFlag && *yesFlag {
 		fmt.Fprintln(os.Stderr, "Error: --yes cannot be used with --tui; dashboard deletion requires confirmation")
+		os.Exit(1)
+	}
+	if *trashFlag && !*tuiFlag {
+		fmt.Fprintln(os.Stderr, "Error: --trash currently requires --tui")
 		os.Exit(1)
 	}
 
@@ -563,29 +596,28 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
 			os.Exit(1)
 		}
-		dashboardItems := filteredItems
-		if *deleteFlag {
-			dashboardItems = make([]scanner.Item, 0, len(filteredItems))
-			for _, item := range filteredItems {
-				if supportsDeletion(item) {
-					dashboardItems = append(dashboardItems, item)
-					continue
-				}
-				fmt.Printf("Skipping %s: deletion is not supported for %q resources.\n",
-					displayTarget(item), item.ResourceType)
-			}
+		initialMode := dashboard.ModeReadOnly
+		if *trashFlag {
+			initialMode = dashboard.ModeTrash
+		} else if *deleteFlag {
+			initialMode = dashboard.ModePermanent
 		}
 
-		result, err := dashboard.Run(dashboardItems, *deleteFlag)
+		result, err := dashboard.Run(filteredItems, initialMode)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running dashboard: %v\n", err)
 			os.Exit(1)
 		}
-		if *deleteFlag {
-			deleteConfirmedSelection(result, deleteJunk)
-		} else if result.Confirmed {
-			fmt.Printf("Read-only selection confirmed: %d items. Use --tui --delete to enable removal.\n",
-				len(result.Items))
+		if result.Confirmed {
+			switch result.Mode {
+			case dashboard.ModePermanent:
+				deleteConfirmedSelection(result, deleteJunk)
+			case dashboard.ModeTrash:
+				trashJunk(result.Items)
+			default:
+				fmt.Printf("Read-only selection confirmed: %d items. No resources changed.\n",
+					len(result.Items))
+			}
 		}
 		return
 	}
