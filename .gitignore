@@ -1,5 +1,6 @@
 #compiled binary
 sweepr
+sweepr.exe
 
 # local tools/logs
 .DS_Store
