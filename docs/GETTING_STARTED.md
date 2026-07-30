@@ -42,6 +42,11 @@ excluded path and press `x` to remove it. Scan settings are remembered for the
 next launch, but cleanup mode, selected results, and confirmations are never
 remembered.
 
+After choosing **Start scan**, sweepr stays inside a read-only progress screen.
+It shows each scanner's visited entries, findings, current location, completion
+time, and errors. Press Escape or `q` to cancel the interactive workflow before
+opening results.
+
 If `sweepr` is not installed yet, see [Installing](#installing).
 
 ## Understanding scan scope

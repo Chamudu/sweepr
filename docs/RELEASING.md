@@ -38,3 +38,14 @@ release with generated notes.
 2. Run `sweepr --version` from the downloaded archive.
 3. Open the dashboard and perform a read-only scan.
 4. Confirm the release page contains all six archives and `checksums.txt`.
+
+## Interactive workflow check
+
+Before the first release, verify on Linux, macOS, and Windows that:
+
+1. The first-run safety screen appears with an isolated/empty user config.
+2. Directory browsing, parent navigation, and folder confirmation work.
+3. Local, global, and combined scopes enable the documented scanners.
+4. Advanced size, age, and exclusion filters affect the results.
+5. Cancelling progress exits before the results and cleanup screens.
+6. A second launch restores scan settings but starts cleanup in Read only.

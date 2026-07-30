@@ -125,7 +125,8 @@
         notices for unavailable scanners and conflict-free opt-out controls.
 - [x] Add advanced exclusions, global-cache scope, minimum-size, and
       minimum-age controls.
-- [ ] Run scans from the dashboard with live progress and cancellation.
+- [x] Run scans from the dashboard with live per-scanner progress and
+      cancellation before results or cleanup controls appear.
 - [x] Store first-launch acknowledgement and safe preferences in the native
       user configuration directory.
 - [ ] Test setup validation and the complete workflow on Linux, macOS, and

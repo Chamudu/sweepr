@@ -401,6 +401,27 @@ func runScanJobs(jobs []scanJob, progressEnabled, jsonOutput bool) []scanner.Ite
 	return allItems
 }
 
+func runScanJobsToDashboard(jobs []scanJob, events chan<- dashboard.ScanEvent) {
+	var workers sync.WaitGroup
+	workers.Add(len(jobs))
+	for _, job := range jobs {
+		job := job
+		go func() {
+			defer workers.Done()
+			started := time.Now()
+			items, err := job.run(func(progress scanner.Progress) {
+				select {
+				case events <- dashboard.ScanEvent{Name: job.name, Progress: progress}:
+				default:
+				}
+			})
+			events <- dashboard.ScanEvent{Name: job.name, Items: items, Err: err, Duration: time.Since(started), Done: true}
+		}()
+	}
+	workers.Wait()
+	close(events)
+}
+
 func main() {
 
 	// FLAGS (only, skip, minSize, minAge)
@@ -486,6 +507,20 @@ func main() {
 				initialSetup.Excludes = append([]string(nil), saved.Excludes...)
 			}
 		}
+		// Saved values are defaults, never stronger than settings explicitly
+		// supplied for this invocation.
+		if flag.NArg() > 0 {
+			initialSetup.Root = initialRoot
+		}
+		if *minSize != "" {
+			initialSetup.MinSize = *minSize
+		}
+		if *minAge > 0 {
+			initialSetup.MinAge = *minAge
+		}
+		if len(excludes) > 0 {
+			initialSetup.Excludes = append([]string(nil), excludes...)
+		}
 		setup, start, err := dashboard.RunScanSetup(initialSetup)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running scan setup: %v\n", err)
@@ -565,7 +600,7 @@ func main() {
 
 	scanners := filterScanner(scanner.All(), *only, effectiveSkip)
 
-	if !*jsonFlag {
+	if !*jsonFlag && !*tuiFlag {
 		header(root, scanners)
 	}
 
@@ -607,7 +642,7 @@ func main() {
 		})
 	}
 
-	if !*jsonFlag && len(scanJobs) > 0 {
+	if !*jsonFlag && !*tuiFlag && len(scanJobs) > 0 {
 		jobNames := make([]string, 0, len(scanJobs))
 		for _, job := range scanJobs {
 			jobNames = append(jobNames, job.name)
@@ -615,13 +650,27 @@ func main() {
 		fmt.Printf("\nRunning scanners concurrently: %s...\n", strings.Join(jobNames, ", "))
 	}
 
-	allItems = runScanJobs(
-		scanJobs,
-		!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
-		*jsonFlag,
-	)
+	if *tuiFlag {
+		jobNames := make([]string, 0, len(scanJobs))
+		for _, job := range scanJobs {
+			jobNames = append(jobNames, job.name)
+		}
+		events := make(chan dashboard.ScanEvent, 64)
+		go runScanJobsToDashboard(scanJobs, events)
+		var cancelled bool
+		allItems, cancelled, err = dashboard.RunScanProgress(jobNames, events)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error running scan progress: %v\n", err)
+			os.Exit(1)
+		}
+		if cancelled {
+			return
+		}
+	} else {
+		allItems = runScanJobs(scanJobs, !*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr), *jsonFlag)
+	}
 
-	if !*jsonFlag {
+	if !*jsonFlag && !*tuiFlag {
 		fmt.Printf("\nScan Completed\n\n")
 	}
 
