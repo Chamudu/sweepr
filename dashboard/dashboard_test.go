@@ -220,3 +220,44 @@ func TestModeChooserAndTrashRestrictions(t *testing.T) {
 		t.Fatalf("trash-incompatible Docker row was not marked unavailable: %q", content)
 	}
 }
+
+func TestInstructionManualOpensAndReturnsToPreviousScreen(t *testing.T) {
+	model := itemsModel([]scanner.Item{{Kind: "cache"}}, ModeReadOnly)
+
+	model = press(model, tea.Key{Code: 'i', Text: "i"})
+	if model.screen != screenHelp || model.returnScreen != screenItems {
+		t.Fatalf("manual state = (%v, return %v); want help returning to items", model.screen, model.returnScreen)
+	}
+	content := model.View().Content
+	for _, want := range []string{"Instruction manual", "START SAFELY", "Permanent delete", "by Chamudu"} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("manual did not contain %q: %q", want, content)
+		}
+	}
+
+	model = press(model, tea.Key{Code: tea.KeyEscape})
+	if model.screen != screenItems {
+		t.Fatalf("escape returned to screen %v; want items", model.screen)
+	}
+}
+
+func TestInstructionManualScrollIsBounded(t *testing.T) {
+	model := NewModel(nil, ModeReadOnly)
+	next, _ := model.Update(tea.WindowSizeMsg{Width: 80, Height: 15})
+	model = next.(Model)
+	model = press(model, tea.Key{Code: 'i', Text: "i"})
+	model = press(model, tea.Key{Code: tea.KeyEnd})
+
+	want := max(0, len(manualLines())-model.visibleHelpRows())
+	if model.helpOffset != want {
+		t.Fatalf("end set manual offset to %d; want %d", model.helpOffset, want)
+	}
+	model = press(model, tea.Key{Code: tea.KeyDown})
+	if model.helpOffset != want {
+		t.Fatalf("down moved manual beyond final line to %d; want %d", model.helpOffset, want)
+	}
+	model = press(model, tea.Key{Code: tea.KeyHome})
+	if model.helpOffset != 0 {
+		t.Fatalf("home set manual offset to %d; want 0", model.helpOffset)
+	}
+}

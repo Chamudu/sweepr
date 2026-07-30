@@ -132,3 +132,7 @@ This project is in active development. See [ROADMAP.md](ROADMAP.md) for planned 
 
 Current: **Phase 12** — release packaging and beginner documentation are being
 prepared for `v0.1.0`.
+
+## License
+
+Sweepr is available under the [MIT License](LICENSE). Copyright © 2026 Chamudu.

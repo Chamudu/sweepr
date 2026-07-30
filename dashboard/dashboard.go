@@ -27,6 +27,8 @@ type Model struct {
 	height       int
 	offset       int
 	reviewOffset int
+	helpOffset   int
+	returnScreen screen
 }
 
 // Mode describes the action the user chose for selected resources.
@@ -111,6 +113,7 @@ const (
 	screenMode screen = iota
 	screenItems
 	screenReview
+	screenHelp
 )
 
 // Result is the user's final dashboard decision. Confirmed records intent only;
@@ -163,6 +166,35 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	if key.String() == "q" || key.String() == "ctrl+c" {
 		return m, tea.Quit
+	}
+	if m.screen == screenHelp {
+		switch key.String() {
+		case "i", "esc", "enter":
+			m.screen = m.returnScreen
+		case "up", "k":
+			if m.helpOffset > 0 {
+				m.helpOffset--
+			}
+		case "down", "j":
+			if m.helpOffset+m.visibleHelpRows() < len(manualLines()) {
+				m.helpOffset++
+			}
+		case "pgup":
+			m.helpOffset = max(0, m.helpOffset-m.visibleHelpRows())
+		case "pgdown":
+			m.helpOffset = min(max(0, len(manualLines())-m.visibleHelpRows()), m.helpOffset+m.visibleHelpRows())
+		case "g", "home":
+			m.helpOffset = 0
+		case "G", "end":
+			m.helpOffset = max(0, len(manualLines())-m.visibleHelpRows())
+		}
+		return m, nil
+	}
+	if key.String() == "i" {
+		m.returnScreen = m.screen
+		m.helpOffset = 0
+		m.screen = screenHelp
+		return m, nil
 	}
 	if m.screen == screenMode {
 		switch key.String() {
@@ -259,6 +291,13 @@ func (m Model) visibleItemRows() int {
 	return max(1, m.height-16)
 }
 
+func (m Model) visibleHelpRows() int {
+	if m.height <= 0 {
+		return 18
+	}
+	return max(3, m.height-10)
+}
+
 func (m *Model) selectAllSupported() {
 	for index, item := range m.items {
 		if m.canSelect(item) {
@@ -322,7 +361,7 @@ func (m Model) View() tea.View {
 	width := m.contentWidth()
 	view.WriteString(titleStyle.Render("SWEEPR"))
 	view.WriteString("  ")
-	view.WriteString(subtitleStyle.Render("developer cleanup dashboard"))
+	view.WriteString(subtitleStyle.Render("developer cleanup dashboard • by Chamudu"))
 	view.WriteString("\n")
 	view.WriteString(ruleStyle.Width(width).Render(""))
 	view.WriteString("\n")
@@ -331,7 +370,9 @@ func (m Model) View() tea.View {
 		view.WriteString(warningStyle.Render("Terminal is small; enlarge it for the best layout."))
 		view.WriteString("\n")
 	}
-	if m.screen == screenMode {
+	if m.screen == screenHelp {
+		m.writeHelp(&view)
+	} else if m.screen == screenMode {
 		m.writeModes(&view)
 	} else if m.screen == screenReview {
 		m.writeReview(&view)
@@ -367,7 +408,69 @@ func (m Model) writeModes(view *strings.Builder) {
 		fmt.Fprintf(view, "%s%s\n", cursor, card)
 	}
 	view.WriteString("\n")
-	view.WriteString(helpStyle.Render("↑/k up   ↓/j down   enter choose   q quit"))
+	view.WriteString(helpStyle.Render("↑/k up   ↓/j down   enter choose   i manual   q quit"))
+}
+
+func manualLines() []string {
+	return []string{
+		"START SAFELY",
+		"Choose Read only for your first scan. It previews selections and never changes files.",
+		"Review exact paths before choosing any cleanup action.",
+		"",
+		"CLEANUP MODES",
+		"Read only       Inspect items without changing anything.",
+		"Safe trash      Move files and folders to OS trash; Docker images are unavailable.",
+		"Permanent delete Remove selected files, folders, and Docker images permanently.",
+		"",
+		"RESULT CONTROLS",
+		"↑/↓ or j/k      Move between rows",
+		"PgUp/PgDn       Move one visible page",
+		"g/G             Jump to the first/last row",
+		"Space           Select or deselect the focused row",
+		"a / c           Select supported items / clear selection",
+		"d               Review selected targets before confirming",
+		"Esc             Return to the previous screen",
+		"q               Quit without confirming",
+		"",
+		"SCANNERS",
+		"dev-junk        Dependencies and build output that development tools can recreate.",
+		"os-junk         Metadata such as .DS_Store and Thumbs.db.",
+		"lang-cache      Global npm, pip, Go, and Gradle caches; rebuilding may download data.",
+		"docker          Dangling images; Docker must rebuild or download them after deletion.",
+		"",
+		"SAFETY NOTES",
+		"Safe trash does not reclaim space until the operating-system trash is emptied.",
+		"Trash can fail on special mounts; sweepr leaves those items untouched.",
+		"Permanent deletion cannot be undone through sweepr.",
+		"Full guide: github.com/Chamudu/sweepr/blob/master/docs/GETTING_STARTED.md",
+	}
+}
+
+func (m Model) writeHelp(view *strings.Builder) {
+	view.WriteString("\n")
+	view.WriteString(sectionTitleStyle.Render("Instruction manual"))
+	view.WriteString("\n")
+	view.WriteString(subtitleStyle.Render("Learn the controls and safety rules before cleaning."))
+	view.WriteString("\n\n")
+
+	lines := manualLines()
+	start := min(m.helpOffset, len(lines))
+	end := min(len(lines), start+m.visibleHelpRows())
+	var body strings.Builder
+	for _, line := range lines[start:end] {
+		if strings.ToUpper(line) == line && line != "" {
+			body.WriteString(sectionTitleStyle.Render(line))
+		} else {
+			body.WriteString(line)
+		}
+		body.WriteString("\n")
+	}
+	if len(lines) > m.visibleHelpRows() {
+		fmt.Fprintf(&body, "%s\n", scrollStyle.Render(fmt.Sprintf("Showing lines %d–%d of %d", start+1, end, len(lines))))
+	}
+	view.WriteString(panelStyle(m.contentWidth()).Render(strings.TrimSuffix(body.String(), "\n")))
+	view.WriteString("\n")
+	view.WriteString(helpStyle.Render("↑↓/jk scroll   pgup/pgdn page   g/G first/last   i/esc/enter back   q quit"))
 }
 
 func modeIcon(mode Mode) string {
@@ -465,7 +568,7 @@ func (m Model) writeItems(view *strings.Builder) {
 		view.WriteString(subtitleStyle.Render(truncateText(info.Description, m.contentWidth())))
 		view.WriteString("\n")
 	}
-	view.WriteString(helpStyle.Render("↑↓/jk move   pgup/pgdn page   space toggle   a all   c clear   d review   esc modes   q quit"))
+	view.WriteString(helpStyle.Render("↑↓/jk move   pgup/pgdn page   space toggle   a all   c clear   d review   i manual   esc modes   q quit"))
 }
 
 func (m Model) writeReview(view *strings.Builder) {
@@ -498,13 +601,13 @@ func (m Model) writeReview(view *strings.Builder) {
 	switch m.mode {
 	case ModePermanent:
 		message = dangerStyle.Render("! PERMANENT: these resources cannot be restored.")
-		help = "enter permanently delete   esc back   ↑/↓ scroll   q quit"
+		help = "enter permanently delete   esc back   ↑/↓ scroll   i manual   q quit"
 	case ModeTrash:
 		message = safeStyle.Render("♲ Recoverable until the operating-system trash is emptied.")
-		help = "enter move to trash   esc back   ↑/↓ scroll   q quit"
+		help = "enter move to trash   esc back   ↑/↓ scroll   i manual   q quit"
 	default:
 		message = infoStyle.Render("◉ Read-only preview: no resources will change.")
-		help = "enter close preview   esc back   ↑/↓ scroll   q quit"
+		help = "enter close preview   esc back   ↑/↓ scroll   i manual   q quit"
 	}
 	view.WriteString(message)
 	view.WriteString("\n")

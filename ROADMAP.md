@@ -109,5 +109,7 @@
       checklist.
 - [x] Add tag-triggered GitHub release automation for Linux, macOS, and Windows
       on amd64/arm64, including SHA-256 checksums and generated release notes.
-- [ ] Choose and add the project license.
+- [x] Add an MIT license.
+- [x] Add a scrollable beginner instruction manual and creator credit to the
+      interactive dashboard.
 - [ ] Review the beginner guide and publish `v0.1.0`.

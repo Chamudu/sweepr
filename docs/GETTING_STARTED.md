@@ -81,6 +81,7 @@ be undone through sweepr. Use it only after reviewing every target.
 | `a` | Select every item supported by the current mode |
 | `c` | Clear the selection |
 | `d` | Review selected targets |
+| `i` | Open or close the instruction manual |
 | Esc | Return to the previous screen |
 | `q` | Quit without confirming |
 
