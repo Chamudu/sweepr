@@ -19,7 +19,11 @@ const (
 	ScopeCombined
 )
 
-var scannerNames = [...]string{"dev-junk", "os-junk", "lang-cache", "docker"}
+var scannerNames = [...]string{"dev-junk", "os-junk", "lang-cache", "system-cache", "docker"}
+
+func advancedRow() int { return 2 + len(scannerNames) }
+func startRow() int    { return advancedRow() + 1 }
+func exitRow() int     { return advancedRow() + 2 }
 
 // ScanSetup is the validated configuration returned to the scanner pipeline.
 type ScanSetup struct {
@@ -92,7 +96,7 @@ func (m SetupModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case "up", "k":
 		m.cursor = max(0, m.cursor-1)
 	case "down", "j":
-		m.cursor = min(8, m.cursor+1)
+		m.cursor = min(exitRow(), m.cursor+1)
 	case "left", "h":
 		if m.cursor == 1 {
 			m.changeScope(-1)
@@ -119,24 +123,24 @@ func (m *SetupModel) activate(enter bool) bool {
 		return true
 	case m.cursor == 1:
 		m.changeScope(1)
-	case m.cursor >= 2 && m.cursor <= 5:
+	case m.cursor >= 2 && m.cursor < advancedRow():
 		name := scannerNames[m.cursor-2]
 		if !scannerAllowed(m.config.Scope, name) {
 			m.notice = scannerUnavailableReason(name)
 			return false
 		}
 		m.config.Enabled[name] = !m.config.Enabled[name]
-	case m.cursor == 6:
+	case m.cursor == advancedRow():
 		m.action = setupAdvanced
 		return true
-	case m.cursor == 7 && enter:
+	case m.cursor == startRow() && enter:
 		if err := validateSetup(m.config); err != nil {
 			m.notice = err.Error()
 			return false
 		}
 		m.action = setupStart
 		return true
-	case m.cursor == 8 && enter:
+	case m.cursor == exitRow() && enter:
 		m.action = setupExit
 		return true
 	}
@@ -193,6 +197,9 @@ func scannerUnavailableReason(name string) string {
 	if name == "lang-cache" {
 		return "Language caches are shared across projects. Choose a global scope to include them."
 	}
+	if name == "system-cache" {
+		return "System caches and temporary files are user-wide resources. Choose a global scope to include them."
+	}
 	return "This scanner needs a selected-folder scope."
 }
 
@@ -230,7 +237,11 @@ func ParseScanScope(value string) (ScanScope, bool) {
 }
 
 func scannerTitle(name string) string {
-	return map[string]string{"dev-junk": "Developer junk", "os-junk": "OS junk", "lang-cache": "Language caches", "docker": "Docker images"}[name]
+	return map[string]string{
+		"dev-junk": "Developer junk", "os-junk": "Folder OS metadata",
+		"lang-cache": "Global development caches", "system-cache": "System caches & temporary files",
+		"docker": "Docker images",
+	}[name]
 }
 
 func (m SetupModel) View() tea.View {
@@ -288,7 +299,7 @@ func (m SetupModel) View() tea.View {
 }
 
 func lipglossStyleForSetupRow(index int, m SetupModel) interface{ Render(...string) string } {
-	if index >= 2 && index <= 5 && !scannerAllowed(m.config.Scope, scannerNames[index-2]) {
+	if index >= 2 && index < advancedRow() && !scannerAllowed(m.config.Scope, scannerNames[index-2]) {
 		return disabledStyle
 	}
 	if index == m.cursor {

@@ -69,9 +69,14 @@ selection, and `d` to review exact targets before confirming.
 | Scanner | Name | What It Finds |
 |---|---|---|
 | **Dev Junk** | `dev-junk` | Build artifacts inside project trees: `node_modules`, `dist`, `build`, `.next`, `target`, `__pycache__`, `.venv`, `venv`, `.pytest_cache`, `.poetry` |
-| **OS Junk** | `os-junk` | Files the OS drops into every directory: `.DS_Store` (macOS), `Thumbs.db`, `desktop.ini` (Windows) |
-| **Lang Cache** | `lang-cache` | Global package manager caches under `$HOME`: npm, pip, cargo, Go modules, Go build cache, yarn, pnpm, Gradle |
+| **Folder OS Metadata** | `os-junk` | Files the OS drops into selected directory trees: `.DS_Store` (macOS), `Thumbs.db`, `desktop.ini` (Windows) |
+| **Global Development Caches** | `lang-cache` | Package-manager and development caches under the user profile: npm, pip, cargo, Go, yarn, pnpm, Gradle, and others |
+| **System Caches & Temporary Files** | `system-cache` | Conservative user-owned OS caches: Linux thumbnails, macOS application caches, and Windows thumbnails plus older user-temp entries |
 | **Docker** | `docker` | Dangling Docker images, with friendly short IDs and exact image metadata |
+
+System cleanup is opt-in on the command line so an upgrade cannot silently
+expand an existing unattended deletion command. Use `--only system-cache`, or
+enable it explicitly from a global scope in the dashboard.
 
 Project-relative scanners automatically prune Timeshift `snapshots` trees and
 directories named `.snapshots`. Use repeatable `--exclude` flags for other

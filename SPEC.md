@@ -24,7 +24,8 @@ for system-wide caches) and finds candidate junk:
 |----------------|------------------------------------------------------------------------|-----------------------|
 | Dev junk       | `node_modules`, `dist`, `build`, `.next`, `target`, `__pycache__`, `.venv`, `.pytest_cache`, `.poetry` | walked from project root |
 | Language caches| `~/.npm`, `~/.cache/pip`, `~/.cargo/registry`, `~/go/pkg/mod/cache`, `~/.cache/yarn`, `~/.local/share/pnpm` | fixed, under `$HOME`  |
-| OS junk        | `.DS_Store`, `Thumbs.db`, `desktop.ini`                                 | walked from project root |
+| Folder OS metadata | `.DS_Store`, `Thumbs.db`, `desktop.ini`                             | walked from project root |
+| System cache | Linux thumbnails; macOS user app caches; Windows thumbnail/user temp data | fixed, user-owned platform paths |
 | macOS/iOS Dev  | `~/Library/Developer/Xcode/DerivedData`                                | fixed, under `$HOME`  |
 | Android Dev    | `~/.gradle/caches`                                                     | fixed, under `$HOME`  |
 | (stretch) Docker | dangling images, stopped containers, unused volumes                  | via `docker` CLI      |

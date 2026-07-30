@@ -112,9 +112,16 @@ be undone through sweepr. Use it only after reviewing every target.
 | Scanner | Examples | What happens after removal |
 |---|---|---|
 | `dev-junk` | `node_modules`, `dist`, `target`, Python caches | A package install or build recreates the data |
-| `os-junk` | `.DS_Store`, `Thumbs.db` | The operating system may recreate the file |
-| `lang-cache` | npm, pip, Go, Gradle caches | Future installs or builds may download/rebuild data |
+| `os-junk` | Folder metadata such as `.DS_Store`, `Thumbs.db` | The operating system may recreate the file |
+| `lang-cache` | Global npm, pip, Go, Gradle caches | Future installs or builds may download/rebuild data |
+| `system-cache` | User-owned thumbnails, app caches, older Windows temp entries | Apps or the OS recreate caches; close apps and prefer safe trash |
 | `docker` | Dangling images | Docker must rebuild or download the image again |
+
+System cleanup deliberately excludes registries, system logs, Downloads,
+trash/recycle-bin contents, cloud files, and privileged OS directories. Their
+purpose and safe retention cannot be inferred reliably from a filename or age.
+System cleanup is opt-in on the command line: use
+`sweepr --only system-cache`, or select it from a global dashboard scope.
 
 ## Useful safe filters
 

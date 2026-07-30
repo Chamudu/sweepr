@@ -45,6 +45,7 @@ func All() []Scanner {
 		&DevJunkScanner{},
 		&LangCacheScanner{},
 		&OSJunkScanner{},
+		&SystemCacheScanner{},
 		&DockerScanner{},
 	}
 }
@@ -103,6 +104,12 @@ func GetJunkInfo(kind string) JunkInfo {
 			Description: "Operating system desktop and folder layout files (e.g. .DS_Store, Thumbs.db).",
 			Warning:     "Safe to delete. Discards local visual preferences (icon placement, scroll positions).",
 		}
+	case "system-thumbnail-cache":
+		return JunkInfo{Description: "Operating-system thumbnail previews that can be regenerated.", Warning: "File previews may load more slowly while thumbnails are rebuilt."}
+	case "system-app-cache":
+		return JunkInfo{Description: "Per-user application cache stored in the operating system cache location.", Warning: "Close applications first. Apps may start more slowly while recreating cached data."}
+	case "system-temp":
+		return JunkInfo{Description: "An older entry in the current user's temporary directory.", Warning: "Temporary files can still be in use. Prefer safe trash and close applications first."}
 	case "npm-cache", "pip-cache", "cargo-cache", "yarn-cache", "pnpm-cache", "cocoapods-cache", "php-composer-cache", "bower-cache":
 		return JunkInfo{
 			Description: "Global package manager cache.",

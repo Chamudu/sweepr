@@ -27,7 +27,7 @@ func TestSetupScopeDisablesIncompatibleScanners(t *testing.T) {
 
 func TestSetupUnavailableScannerShowsReason(t *testing.T) {
 	model := NewSetupModel(DefaultScanSetup(t.TempDir()))
-	model.cursor = 5 // Docker is unavailable in local scope.
+	model.cursor = 6 // Docker is unavailable in local scope.
 	next, _ := model.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeySpace}))
 	model = next.(SetupModel)
 	if model.config.Enabled["docker"] {
@@ -52,7 +52,7 @@ func TestSetupValidationRequiresScannerAndDirectory(t *testing.T) {
 
 func TestSetupViewShowsScopeAndDisabledScanners(t *testing.T) {
 	content := NewSetupModel(DefaultScanSetup(t.TempDir())).View().Content
-	for _, want := range []string{"Configure scan", "Selected folder only", "[-] Language caches", "[-] Docker images", "Start scan"} {
+	for _, want := range []string{"Configure scan", "Selected folder only", "[-] Global development caches", "[-] System caches & temporary files", "[-] Docker images", "Start scan"} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("setup did not contain %q: %q", want, content)
 		}

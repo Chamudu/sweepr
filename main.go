@@ -107,10 +107,6 @@ func contains(list []string, target string) bool {
 
 func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 
-	if only == "" && skip == "" {
-		return all
-	}
-
 	var result []scanner.Scanner
 
 	var onlyList []string
@@ -124,6 +120,11 @@ func filterScanner(all []scanner.Scanner, only, skip string) []scanner.Scanner {
 	}
 
 	for _, s := range all {
+		// System cleanup requires explicit selection. A new release must not
+		// silently expand an existing unattended `--delete --yes` command.
+		if only == "" && s.Name() == "system-cache" {
+			continue
+		}
 		if only != "" && !contains(onlyList, s.Name()) {
 			continue
 		}

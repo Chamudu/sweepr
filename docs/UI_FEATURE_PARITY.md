@@ -23,6 +23,7 @@ configuration directory. It is not stored inside the scanned project.
 | OS junk | `--only` / `--skip os-junk` | Enabled |
 | Language caches | `--only` / `--skip lang-cache` | Enabled only for the default scope |
 | Docker images | `--only` / `--skip docker` | Enabled |
+| System caches and temporary files | `--only` / `--skip system-cache` | Enabled in global scopes |
 | Global user caches | `--include-global` | Off for an explicitly selected directory |
 
 ### Scope and scanner compatibility
@@ -33,14 +34,19 @@ The UI uses one explicit scope rather than making users combine `--only`,
 | Scanner | Selected folder | Global resources | Folder + global |
 |---|---:|---:|---:|
 | Developer junk | Available | Disabled | Available |
-| OS junk | Available | Disabled | Available |
-| Language caches | Disabled | Available | Available |
+| Folder OS metadata | Available | Disabled | Available |
+| Global development caches | Disabled | Available | Available |
+| System caches & temporary files | Disabled | Available | Available |
 | Docker images | Disabled | Available | Available |
 
 Disabled rows remain visible and explain why they cannot run in the selected
 scope. For example, Docker images belong to the current Docker engine rather
 than the chosen folder. Changing scope automatically removes incompatible
 scanner selections and shows a notice; it never runs them silently.
+
+System cleanup uses a conservative allowlist of documented, user-owned,
+recreatable caches. It never edits the Windows registry or selects system logs,
+Downloads, trash, cloud content, or privileged OS directories.
 
 Within the interactive UI, scanner checkboxes produce one canonical enabled
 set. This prevents contradictory CLI-style combinations such as selecting and

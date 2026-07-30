@@ -131,3 +131,15 @@
       user configuration directory.
 - [ ] Test setup validation and the complete workflow on Linux, macOS, and
       Windows before publishing `v0.1.0`.
+
+## Phase 14 — Conservative System Cleanup
+- [x] Rename ambiguous UI labels to Folder OS metadata and Global development
+      caches.
+- [x] Add a global System caches & temporary files scanner using user-owned,
+      platform-specific allowlists.
+- [x] Cover Linux XDG thumbnails, macOS per-user application caches, Windows
+      thumbnail databases, and Windows user-temp entries older than seven days.
+- [x] Exclude registries, logs, Downloads, trash, cloud content, symlinks, and
+      privileged system directories by design.
+- [ ] Verify native findings and safe-trash behavior on Linux, macOS, and
+      Windows before publishing `v0.1.0`.
