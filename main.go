@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sweepr/remover"
 	"sweepr/scanner"
+	"sync"
 	"time"
 	"unicode"
 )
@@ -249,6 +250,119 @@ func hasScanner(scanners []scanner.Scanner, name string) bool {
 	return false
 }
 
+// scanJob describes one independent unit of scanning work. The run function
+// accepts a progress callback so workers report state without writing directly
+// to the terminal.
+type scanJob struct {
+	name string
+	run  func(scanner.ProgressFunc) ([]scanner.Item, error)
+}
+
+// scanResult is the single final message produced by a scan job. Returning
+// results through a channel means worker goroutines never mutate allItems.
+type scanResult struct {
+	name     string
+	items    []scanner.Item
+	err      error
+	duration time.Duration
+}
+
+type scanProgress struct {
+	name     string
+	progress scanner.Progress
+}
+
+// runScanJobs executes independent scan jobs concurrently. Worker goroutines
+// perform expensive I/O, while this function remains the sole owner of output
+// and result aggregation. That separation avoids terminal corruption and data
+// races on the combined item slice.
+func runScanJobs(jobs []scanJob, progressEnabled, jsonOutput bool) []scanner.Item {
+	if len(jobs) == 0 {
+		return nil
+	}
+
+	results := make(chan scanResult, len(jobs))
+	progressUpdates := make(chan scanProgress, 64)
+	var workers sync.WaitGroup
+	workers.Add(len(jobs))
+
+	for _, job := range jobs {
+		job := job // Give this goroutine its own copy of the loop value.
+		go func() {
+			defer workers.Done()
+			started := time.Now()
+
+			items, err := job.run(func(progress scanner.Progress) {
+				// Progress is best-effort. Dropping an intermediate update when the
+				// channel is full keeps terminal rendering from slowing the scan.
+				select {
+				case progressUpdates <- scanProgress{name: job.name, progress: progress}:
+				default:
+				}
+			})
+
+			results <- scanResult{
+				name:     job.name,
+				items:    items,
+				err:      err,
+				duration: time.Since(started),
+			}
+		}()
+	}
+
+	// Closing channels gives the receiving loop a clean stopping condition.
+	// Only the coordinator closes them, after every worker has returned.
+	go func() {
+		workers.Wait()
+		close(results)
+		close(progressUpdates)
+	}()
+
+	renderers := make(map[string]*progressRenderer, len(jobs))
+	for _, job := range jobs {
+		renderers[job.name] = newProgressRenderer(job.name, progressEnabled)
+	}
+
+	var allItems []scanner.Item
+	completed := 0
+	for completed < len(jobs) {
+		select {
+		case update, ok := <-progressUpdates:
+			if !ok {
+				// A nil channel is disabled inside select, preventing a closed
+				// channel from being chosen repeatedly in a busy loop.
+				progressUpdates = nil
+				continue
+			}
+			renderers[update.name].Update(update.progress)
+		case result, ok := <-results:
+			if !ok {
+				results = nil
+				continue
+			}
+
+			renderers[result.name].Finish()
+			completed++
+			if result.err != nil {
+				if jsonOutput {
+					fmt.Fprintf(os.Stderr, "Error running scanner %s: %v\n", result.name, result.err)
+				} else {
+					fmt.Printf("Error running scanner %s: %v\n", result.name, result.err)
+				}
+				continue
+			}
+
+			allItems = append(allItems, result.items...)
+			if !jsonOutput {
+				fmt.Printf("Completed scanner: %s (%s, %d items)\n",
+					result.name, formatScanDuration(result.duration), len(result.items))
+			}
+		}
+	}
+
+	return allItems
+}
+
 func main() {
 
 	// FLAGS (only, skip, minSize, minAge)
@@ -340,68 +454,45 @@ func main() {
 		independentScanners = append(independentScanners, selected)
 	}
 
+	var scanJobs []scanJob
 	if len(projectScanners) > 0 {
 		projectNames := make([]string, 0, len(projectScanners))
 		for _, projectScanner := range projectScanners {
 			projectNames = append(projectNames, projectScanner.Name())
 		}
 
-		if !*jsonFlag {
-			fmt.Printf("\nRunning shared project scan: %s...\n", strings.Join(projectNames, ", "))
-		}
-
-		scanStarted := time.Now()
-		progress := newProgressRenderer(
-			"project",
-			!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
-		)
-		items, err := scanner.ScanProject(root, scanOptions.WithProgress(progress.Update), projectScanners)
-		progress.Finish()
-		scanDuration := time.Since(scanStarted)
-		if err != nil {
-			if !*jsonFlag {
-				fmt.Printf("Error running shared project scan: %v\n", err)
-			} else {
-				fmt.Fprintf(os.Stderr, "Error running shared project scan: %v\n", err)
-			}
-		} else {
-			if !*jsonFlag {
-				fmt.Printf("Completed shared project scan (%s, %d items)\n", formatScanDuration(scanDuration), len(items))
-			}
-			allItems = append(allItems, items...)
-		}
+		projectLabel := "project (" + strings.Join(projectNames, ", ") + ")"
+		scanJobs = append(scanJobs, scanJob{
+			name: projectLabel,
+			run: func(report scanner.ProgressFunc) ([]scanner.Item, error) {
+				return scanner.ScanProject(root, scanOptions.WithProgress(report), projectScanners)
+			},
+		})
 	}
 
 	for _, s := range independentScanners {
-
-		if !*jsonFlag {
-			fmt.Printf("\nRunning scanner: %s...\n", s.Name())
-		}
-
-		scanStarted := time.Now()
-		progress := newProgressRenderer(
-			s.Name(),
-			!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
-		)
-		items, err := s.Scan(root, scanOptions.WithProgress(progress.Update))
-		progress.Finish()
-		scanDuration := time.Since(scanStarted)
-		if err != nil {
-			// A scanner error is non-fatal: report it and continue with the rest.
-			if !*jsonFlag {
-				fmt.Printf("Error running scanner %s: %v\n", s.Name(), err)
-			} else {
-				fmt.Fprintf(os.Stderr, "Error running scanner %s: %v\n", s.Name(), err)
-			}
-			continue
-		}
-
-		if !*jsonFlag {
-			fmt.Printf("Completed scanner: %s (%s, %d items)\n", s.Name(), formatScanDuration(scanDuration), len(items))
-		}
-
-		allItems = append(allItems, items...)
+		s := s // Capture the scanner selected by this loop iteration.
+		scanJobs = append(scanJobs, scanJob{
+			name: s.Name(),
+			run: func(report scanner.ProgressFunc) ([]scanner.Item, error) {
+				return s.Scan(root, scanOptions.WithProgress(report))
+			},
+		})
 	}
+
+	if !*jsonFlag && len(scanJobs) > 0 {
+		jobNames := make([]string, 0, len(scanJobs))
+		for _, job := range scanJobs {
+			jobNames = append(jobNames, job.name)
+		}
+		fmt.Printf("\nRunning scanners concurrently: %s...\n", strings.Join(jobNames, ", "))
+	}
+
+	allItems = runScanJobs(
+		scanJobs,
+		!*jsonFlag && !*noProgress && isInteractiveTerminal(os.Stderr),
+		*jsonFlag,
+	)
 
 	if !*jsonFlag {
 		fmt.Printf("\nScan Completed\n\n")

@@ -1,0 +1,51 @@
+package main
+
+import (
+	"testing"
+	"time"
+
+	"sweepr/scanner"
+)
+
+// TestRunScanJobsStartsJobsConcurrently uses synchronization instead of timing
+// comparisons. Both jobs announce that they started, then wait at the same
+// gate. A sequential implementation could never get both jobs to that gate.
+func TestRunScanJobsStartsJobsConcurrently(t *testing.T) {
+	started := make(chan string, 2)
+	release := make(chan struct{})
+
+	newBlockingJob := func(name string) scanJob {
+		return scanJob{
+			name: name,
+			run: func(scanner.ProgressFunc) ([]scanner.Item, error) {
+				started <- name
+				<-release
+				return []scanner.Item{{Kind: name}}, nil
+			},
+		}
+	}
+
+	done := make(chan []scanner.Item, 1)
+	go func() {
+		done <- runScanJobs(
+			[]scanJob{newBlockingJob("first"), newBlockingJob("second")},
+			false,
+			true,
+		)
+	}()
+
+	for range 2 {
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			close(release)
+			t.Fatal("both scan jobs did not start concurrently")
+		}
+	}
+
+	close(release)
+	items := <-done
+	if len(items) != 2 {
+		t.Fatalf("runScanJobs returned %d items; want 2", len(items))
+	}
+}

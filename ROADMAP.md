@@ -64,7 +64,9 @@
       project artifacts and global language caches.
 - [x] Replace name-only matching for ambiguous build directories with bounded
       project-marker validation to reduce destructive false positives.
-- [ ] Run all scanners concurrently with goroutines + `sync.WaitGroup`, collect results via a channel or a mutex-protected slice.
+- [x] Run independent scan jobs concurrently with goroutines + `sync.WaitGroup`,
+      collecting progress and results through channels while keeping terminal
+      output owned by the main goroutine.
 - [x] Implement **Single-Pass Walking**: traverse project files once and pass
       safe entries to all enabled project classifiers.
 
