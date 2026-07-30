@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sweepr/dashboard"
 	"sweepr/remover"
 	"sweepr/scanner"
 	"sync"
@@ -373,6 +374,7 @@ func main() {
 	deleteFlag := flag.Bool("delete", false, "Delete found juck items")
 	yesFlag := flag.Bool("yes", false, "skip confirmation prompt (Dangerous!)")
 	jsonFlag := flag.Bool("json", false, "format output as JSON")
+	tuiFlag := flag.Bool("tui", false, "open scan results in the interactive terminal dashboard")
 	noProgress := flag.Bool("no-progress", false, "disable interactive scan progress")
 	includeGlobal := flag.Bool("include-global", false, "include global language caches with an explicit root")
 	var excludes stringListFlag
@@ -382,6 +384,10 @@ func main() {
 
 	if *jsonFlag && *deleteFlag {
 		fmt.Fprintln(os.Stderr, "Error: cannot use --json and --delete together")
+		os.Exit(1)
+	}
+	if *tuiFlag && (*jsonFlag || *deleteFlag) {
+		fmt.Fprintln(os.Stderr, "Error: --tui cannot currently be combined with --json or --delete")
 		os.Exit(1)
 	}
 
@@ -534,6 +540,18 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println(string(jsonData))
+		return
+	}
+
+	if *tuiFlag {
+		if !isInteractiveTerminal(os.Stdin) || !isInteractiveTerminal(os.Stdout) {
+			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
+			os.Exit(1)
+		}
+		if err := dashboard.Run(filteredItems); err != nil {
+			fmt.Fprintf(os.Stderr, "Error running dashboard: %v\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 
