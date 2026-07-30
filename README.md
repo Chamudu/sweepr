@@ -52,6 +52,11 @@ go build -o sweepr
 ./sweepr --tui --delete
 ```
 
+The dashboard adapts to terminal size and scrolls long result lists. Use arrow
+keys or `j`/`k` to move, Page Up/Page Down for larger jumps, Space to toggle an
+item, `a` to select every item supported by the current mode, `c` to clear the
+selection, and `d` to review exact targets before confirming.
+
 ## What It Scans
 
 | Scanner | Name | What It Finds |

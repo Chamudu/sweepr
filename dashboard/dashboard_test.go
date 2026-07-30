@@ -1,10 +1,12 @@
 package dashboard
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"sweepr/scanner"
 )
@@ -119,7 +121,7 @@ func TestReviewExplainsWhetherDeletionIsEnabled(t *testing.T) {
 	readOnly := itemsModel([]scanner.Item{item}, ModeReadOnly)
 	readOnly.toggleCurrent()
 	readOnly.screen = screenReview
-	if content := readOnly.View().Content; !strings.Contains(content, "Read-only mode") {
+	if content := readOnly.View().Content; !strings.Contains(content, "Read-only preview") {
 		t.Fatalf("read-only review omitted its safety status: %q", content)
 	}
 
@@ -128,6 +130,69 @@ func TestReviewExplainsWhetherDeletionIsEnabled(t *testing.T) {
 	destructive.screen = screenReview
 	if content := destructive.View().Content; !strings.Contains(content, "permanently delete") {
 		t.Fatalf("deletion review omitted its warning: %q", content)
+	}
+}
+
+func TestWindowSizeKeepsCursorInsideVisibleViewport(t *testing.T) {
+	items := make([]scanner.Item, 20)
+	for index := range items {
+		items[index] = scanner.Item{Kind: fmt.Sprintf("item-%02d", index)}
+	}
+	model := itemsModel(items, ModeReadOnly)
+	next, _ := model.Update(tea.WindowSizeMsg{Width: 80, Height: 19})
+	model = next.(Model)
+
+	for range 10 {
+		model = press(model, tea.Key{Code: tea.KeyDown})
+	}
+	if model.cursor != 10 {
+		t.Fatalf("cursor = %d; want 10", model.cursor)
+	}
+	if model.offset != 8 {
+		t.Fatalf("viewport offset = %d; want 8 for three visible rows", model.offset)
+	}
+	content := model.View().Content
+	if !strings.Contains(content, "item-10") || strings.Contains(content, "item-00") {
+		t.Fatalf("viewport did not render the expected visible window: %q", content)
+	}
+	lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
+	if len(lines) > 19 {
+		t.Fatalf("80x19 view rendered %d lines; want at most 19", len(lines))
+	}
+	for index, line := range lines {
+		if width := lipgloss.Width(line); width > 80 {
+			t.Fatalf("line %d occupies %d cells; want at most 80", index+1, width)
+		}
+	}
+}
+
+func TestSelectAllSkipsItemsUnsupportedByMode(t *testing.T) {
+	model := itemsModel([]scanner.Item{
+		{Path: "/tmp/cache", ResourceType: scanner.ResourceDirectory},
+		{Path: "sha256:abc", ResourceType: scanner.ResourceDockerImage},
+	}, ModeTrash)
+
+	model = press(model, tea.Key{Code: 'a', Text: "a"})
+	if len(model.selected) != 1 {
+		t.Fatalf("trash select-all selected %d items; want only the filesystem item", len(model.selected))
+	}
+	if _, selected := model.selected[0]; !selected {
+		t.Fatal("trash select-all did not select the supported directory")
+	}
+
+	model = press(model, tea.Key{Code: 'c', Text: "c"})
+	if len(model.selected) != 0 {
+		t.Fatal("clear-selection key left selected items")
+	}
+}
+
+func TestTruncateTextUsesTerminalCellWidth(t *testing.T) {
+	got := truncateText("cache/very/long/path", 10)
+	if !strings.HasSuffix(got, "…") {
+		t.Fatalf("truncated value %q has no ellipsis", got)
+	}
+	if width := lipgloss.Width(got); width > 10 {
+		t.Fatalf("truncated value occupies %d cells; want at most 10", width)
 	}
 }
 

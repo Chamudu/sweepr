@@ -93,3 +93,11 @@
 - [x] Detect Windows-specific global language-cache locations.
 - [x] Run opt-in native scratch-file trash integration tests on Linux, macOS,
       and Windows CI runners without touching developer trash during local tests.
+
+## Phase 11 — Dashboard Usability
+- [x] Add Lip Gloss visual hierarchy, mode-specific colors, bordered panels,
+      contextual descriptions, and clearer safety messaging.
+- [x] Add responsive terminal sizing, long-list viewports, Page Up/Page Down,
+      first/last navigation, select-all, and clear-selection controls.
+- [x] Test resize handling, viewport visibility, cell-aware truncation, and
+      mode-safe bulk selection.
