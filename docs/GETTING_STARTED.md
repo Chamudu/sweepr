@@ -21,6 +21,11 @@ Open a terminal in a project and run:
 sweepr --tui
 ```
 
+On the first launch, sweepr shows a safety introduction before scanning. Press
+Enter to acknowledge it and continue, or Escape to exit without starting a
+scan. The acknowledgement is saved in your operating system's user
+configuration directory, never inside the project being scanned.
+
 Choose **Read only**. This mode cannot change files. Move with the arrow keys,
 select interesting rows with Space, and press `d` to preview them. Press `q` at
 any time to exit.

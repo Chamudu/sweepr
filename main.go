@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sweepr/dashboard"
 	"sweepr/internal/buildinfo"
+	"sweepr/internal/userconfig"
 	"sweepr/remover"
 	"sweepr/scanner"
 	"sweepr/trash"
@@ -444,6 +445,29 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: --trash currently requires --tui")
 		os.Exit(1)
 	}
+	if *tuiFlag {
+		if !isInteractiveTerminal(os.Stdin) || !isInteractiveTerminal(os.Stdout) {
+			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
+			os.Exit(1)
+		}
+		welcomeComplete, err := userconfig.WelcomeComplete()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not read UI preferences: %v\n", err)
+		}
+		if !welcomeComplete {
+			continued, err := dashboard.RunWelcome()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error running welcome screen: %v\n", err)
+				os.Exit(1)
+			}
+			if !continued {
+				return
+			}
+			if err := userconfig.MarkWelcomeComplete(); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not save UI preferences: %v\n", err)
+			}
+		}
+	}
 
 	var minSizeBytes int64
 	if *minSize != "" {
@@ -598,10 +622,6 @@ func main() {
 	}
 
 	if *tuiFlag {
-		if !isInteractiveTerminal(os.Stdin) || !isInteractiveTerminal(os.Stdout) {
-			fmt.Fprintln(os.Stderr, "Error: --tui requires an interactive terminal")
-			os.Exit(1)
-		}
 		initialMode := dashboard.ModeReadOnly
 		if *trashFlag {
 			initialMode = dashboard.ModeTrash

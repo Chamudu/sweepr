@@ -113,3 +113,16 @@
 - [x] Add a scrollable beginner instruction manual and creator credit to the
       interactive dashboard.
 - [ ] Review the beginner guide and publish `v0.1.0`.
+
+## Phase 13 — Complete Interactive Workflow
+- [x] Map CLI features to basic, advanced, and intentionally CLI-only UI
+      controls.
+- [x] Add a first-launch welcome and safety acknowledgement.
+- [ ] Add target-directory and scanner selection before scanning.
+- [ ] Add advanced exclusions, global-cache scope, minimum-size, and
+      minimum-age controls.
+- [ ] Run scans from the dashboard with live progress and cancellation.
+- [ ] Store first-launch acknowledgement and safe preferences in the native
+      user configuration directory.
+- [ ] Test setup validation and the complete workflow on Linux, macOS, and
+      Windows before publishing `v0.1.0`.
