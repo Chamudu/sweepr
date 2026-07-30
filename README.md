@@ -90,14 +90,16 @@ This avoids traversing large project trees twice while preserving standalone
 |---|---|
 | Linux | ✅ Fully supported |
 | macOS | ✅ Fully supported |
-| Windows | ⚠️ Partial — project scanners and Recycle Bin trash work, but `lang-cache` does not yet detect Windows cache locations (`%AppData%\npm-cache` etc.) |
+| Windows | ✅ Project scanners, common `%LocalAppData%` language caches, Docker integration, and Recycle Bin trash are supported |
 
 Safe-trash mode uses GIO on Linux, Finder on macOS, and the Recycle Bin API on
 Windows. Docker images cannot be moved to OS trash; choose permanent deletion
 if you explicitly want to remove selected dangling images. Moving filesystem
 items to trash does not reclaim disk space until the trash is emptied.
 
-Windows cache path support is planned for a future release.
+Windows language-cache detection includes npm, pip, Go build, Yarn, and pnpm
+caches under `%LocalAppData%`, plus home-relative Cargo, Go module, and Gradle
+caches.
 
 Every push and pull request to `master` runs tests, vet, and a native build on
 GitHub-hosted Linux, macOS, and Windows runners. The Linux job additionally runs

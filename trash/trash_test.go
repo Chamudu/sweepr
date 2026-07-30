@@ -2,6 +2,8 @@ package trash
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -35,6 +37,36 @@ func TestCommandForKeepsPathInSeparateArgument(t *testing.T) {
 				t.Fatalf("path was not passed as a separate argument: %#v", cmd.args)
 			}
 		})
+	}
+}
+
+func TestNativeTrashIntegration(t *testing.T) {
+	if os.Getenv("SWEEPR_TRASH_INTEGRATION") != "1" {
+		t.Skip("set SWEEPR_TRASH_INTEGRATION=1 to modify the current user's trash")
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scratch, err := os.MkdirTemp(home, ".sweepr-trash-integration-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Cleanup is only a fallback when trashing fails. On success, the original
+	// path no longer exists and the ephemeral CI runner later discards its trash.
+	t.Cleanup(func() { _ = os.RemoveAll(scratch) })
+
+	marker := filepath.Join(scratch, "marker.txt")
+	if err := os.WriteFile(marker, []byte("sweepr trash integration test\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	item := scanner.Item{Path: scratch, ResourceType: scanner.ResourceDirectory}
+	if err := Move(item); err != nil {
+		t.Fatalf("native trash operation failed: %v", err)
+	}
+	if _, err := os.Stat(scratch); !os.IsNotExist(err) {
+		t.Fatalf("scratch path still exists after trash operation: %v", err)
 	}
 }
 

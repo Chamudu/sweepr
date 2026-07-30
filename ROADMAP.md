@@ -90,5 +90,6 @@
 ## Phase 10 — Portability & Release Confidence
 - [x] Add GitHub Actions CI for native Linux, macOS, and Windows tests, vet, and
       builds, plus race detection on Linux.
-- [ ] Detect Windows-specific global language-cache locations.
-- [ ] Run native scratch-file trash integration tests on each supported OS.
+- [x] Detect Windows-specific global language-cache locations.
+- [x] Run opt-in native scratch-file trash integration tests on Linux, macOS,
+      and Windows CI runners without touching developer trash during local tests.

@@ -3,6 +3,7 @@ package scanner
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // cacheRelPaths maps paths relative to the user's home directory ($HOME) to a
@@ -13,33 +14,15 @@ import (
 // we check them directly. If a path does not exist on the current machine
 // (e.g., Xcode cache on a Linux box), it is silently skipped. That is
 // expected behavior, not an error.
-//
-// Platform note: these paths are correct for Linux and macOS. Windows uses
-// different conventions (%AppData%, %LocalAppData%), which will be handled
-// in a future release via Go build constraints (//go:build windows).
-var cacheRelPaths = map[string]string{
-	".npm":                                "npm-cache",
-	".cache/pip":                          "pip-cache",
-	".cargo/registry/cache":               "cargo-cache",
-	"go/pkg/mod/cache/download":           "go-mod-cache",
-	".cache/go-build":                     "go-build-cache",
-	".cache/yarn":                         "yarn-cache",
-	".local/share/pnpm":                   "pnpm-cache",
-	"Library/Developer/Xcode/DerivedData": "xcode-derived-data", // macOS only
-	".gradle/caches":                      "gradle-cache",
+var homeCacheRelPaths = map[string]string{
+	".cargo/registry/cache":     "cargo-cache",
+	"go/pkg/mod/cache/download": "go-mod-cache",
+	".gradle/caches":            "gradle-cache",
 
 	// Mobile Development
-	".android/avd":                     "android-emulator-snapshots", // Deletes stored states of virtual devices
-	"Library/Developer/Xcode/Archives": "xcode-archives",             // macOS only: Past production build history
-	"Library/Caches/CocoaPods":         "cocoapods-cache",            // macOS only: iOS Swift/Obj-C package cache
+	".android/avd": "android-emulator-snapshots", // Deletes stored states of virtual devices
 
 	// Compiler / Language Toolchains
-	".cache/clangd":   "clangd-index-cache", // C/C++ language server indexes
-	".cache/deno":     "deno-cache",         // Deno runtime and package storage
-	".cache/zig":      "zig-cache",          // Zig compiler global artifact store
-	".cache/supabase": "supabase-local-dev", // Local database dev caches
-	".cache/hardhat":  "hardhat-evm-cache",  // Ethereum/Web3 smart contract dev cache
-
 	// Additional package tools
 	".composer/cache": "php-composer-cache", // PHP package dependency cache
 	".bower":          "bower-cache",        // Legacy frontend package manager cache
@@ -48,6 +31,71 @@ var cacheRelPaths = map[string]string{
 	".vscode/extensions":          "vscode-extensions",          // VS Code downloaded extensions
 	".antigravity/extensions":     "antigravity-extensions",     // Antigravity downloaded extensions
 	".antigravity-ide/extensions": "antigravity-ide-extensions", // Antigravity IDE extensions
+}
+
+var unixCacheRelPaths = map[string]string{
+	".npm":              "npm-cache",
+	".cache/pip":        "pip-cache",
+	".cache/go-build":   "go-build-cache",
+	".cache/yarn":       "yarn-cache",
+	".local/share/pnpm": "pnpm-cache",
+	".cache/clangd":     "clangd-index-cache",
+	".cache/deno":       "deno-cache",
+	".cache/zig":        "zig-cache",
+	".cache/supabase":   "supabase-local-dev",
+	".cache/hardhat":    "hardhat-evm-cache",
+}
+
+var macOSCacheRelPaths = map[string]string{
+	"Library/Developer/Xcode/DerivedData": "xcode-derived-data",
+	"Library/Developer/Xcode/Archives":    "xcode-archives",
+	"Library/Caches/CocoaPods":            "cocoapods-cache",
+	"Library/Caches/pip":                  "pip-cache",
+}
+
+type cacheLocation struct {
+	path string
+	kind string
+}
+
+// cacheLocations translates platform conventions into absolute paths. Passing
+// getenv as a function keeps Windows path behavior testable on other systems.
+func cacheLocations(goos, home string, getenv func(string) string) []cacheLocation {
+	locations := make([]cacheLocation, 0, len(homeCacheRelPaths)+len(unixCacheRelPaths))
+	appendHomePaths := func(paths map[string]string) {
+		for relPath, kind := range paths {
+			locations = append(locations, cacheLocation{
+				path: filepath.Join(home, filepath.FromSlash(relPath)),
+				kind: kind,
+			})
+		}
+	}
+	appendHomePaths(homeCacheRelPaths)
+
+	if goos != "windows" {
+		appendHomePaths(unixCacheRelPaths)
+		if goos == "darwin" {
+			appendHomePaths(macOSCacheRelPaths)
+		}
+		return locations
+	}
+
+	if localAppData := getenv("LOCALAPPDATA"); localAppData != "" {
+		windowsPaths := map[string]string{
+			"npm-cache":  "npm-cache",
+			"pip/Cache":  "pip-cache",
+			"go-build":   "go-build-cache",
+			"Yarn/Cache": "yarn-cache",
+			"pnpm/store": "pnpm-cache",
+		}
+		for relPath, kind := range windowsPaths {
+			locations = append(locations, cacheLocation{
+				path: filepath.Join(localAppData, filepath.FromSlash(relPath)),
+				kind: kind,
+			})
+		}
+	}
+	return locations
 }
 
 // LangCacheScanner reports the disk usage of global package-manager caches
@@ -82,10 +130,8 @@ func (s *LangCacheScanner) Scan(root string, options ScanOptions) ([]Item, error
 	var entriesScanned int64
 	var bytesFound int64
 
-	for relPath, kind := range cacheRelPaths {
-		// filepath.Join correctly handles OS path separators and cleans up any
-		// double slashes or trailing separators.
-		absPath := filepath.Join(home, filepath.FromSlash(relPath))
+	for _, location := range cacheLocations(runtime.GOOS, home, os.Getenv) {
+		absPath := location.path
 
 		// os.Stat follows symlinks. An error here almost always means the path
 		// does not exist on this machine — use continue (not return) to check
@@ -118,7 +164,7 @@ func (s *LangCacheScanner) Scan(root string, options ScanOptions) ([]Item, error
 		bytesFound += size
 		items = append(items, Item{
 			Path:         absPath,
-			Kind:         kind,
+			Kind:         location.kind,
 			SizeBytes:    size,
 			LastMod:      modTime,
 			ResourceType: ResourceDirectory,

@@ -45,6 +45,11 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Test native trash integration
+        env:
+          SWEEPR_TRASH_INTEGRATION: "1"
+        run: go test ./trash -run '^TestNativeTrashIntegration$' -count=1
+
       - name: Detect data races
         if: runner.os == 'Linux'
         run: go test -race ./...
