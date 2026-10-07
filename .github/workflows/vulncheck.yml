@@ -39,3 +39,4 @@ jobs:
 
       - name: Scan for known vulnerabilities
         run: govulncheck ./...
+

@@ -193,6 +193,10 @@ Windows PowerShell:
 .\sweepr.exe --tui
 ```
 
+You can also double-click `sweepr.exe` in File Explorer. On Windows, a
+no-argument launch opens the interactive dashboard automatically. Use a
+terminal when you want command-line output such as `--json`.
+
 The `chmod` command gives a Unix file permission called **execute** to the
 binary. It does not run sweepr or grant administrator access.
 

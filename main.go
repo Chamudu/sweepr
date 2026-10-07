@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -454,6 +455,13 @@ func main() {
 		fmt.Println("Source: https://github.com/Chamudu/sweepr")
 		return
 	}
+	// A Windows console executable launched from Explorer has no arguments. In
+	// that case the regular report would be printed into a console window that
+	// closes immediately, making it look like sweepr did nothing. Start the
+	// interactive dashboard so double-clicking the packaged binary is useful.
+	if shouldLaunchDefaultTUI(runtime.GOOS, os.Args) {
+		*tuiFlag = true
+	}
 
 	if *deleteFlag && *trashFlag {
 		fmt.Fprintln(os.Stderr, "Error: --delete and --trash are mutually exclusive")
@@ -861,4 +869,8 @@ func main() {
 	}
 
 	deleteJunk(itemsToDelete)
+}
+
+func shouldLaunchDefaultTUI(goos string, args []string) bool {
+	return goos == "windows" && len(args) == 1
 }
