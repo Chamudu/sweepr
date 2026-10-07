@@ -149,9 +149,9 @@
   - [ ] Windows: native cache findings, Recycle Bin, and complete TUI workflow.
 
 ## Phase 15 — Post-release Hardening
-- [ ] Expand cleanup tests around Docker command failures and multi-item
+- [x] Expand cleanup tests around Docker command failures and multi-item
       partial-success reporting.
-- [ ] Raise scanner and user-configuration coverage around errors, symlinks,
+- [x] Raise scanner and user-configuration coverage around errors, symlinks,
       exclusions, and invalid persisted settings.
 - [ ] Add automated dependency-vulnerability scanning to CI.
-- [ ] Define supported release lines in `SECURITY.md` before `v1.0.0`.
+- [x] Define supported release lines in `SECURITY.md` before `v1.0.0`.

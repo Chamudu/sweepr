@@ -2,9 +2,16 @@
 
 ## Supported versions
 
-Before the first stable release, security fixes are made on the latest code on
-the `master` branch. This table will be replaced with supported release lines
-after `v1.0.0`.
+Security fixes are backported to the **latest patch release** of the most
+recent minor release line. The table below lists which versions currently
+receive security updates.
+
+| Version | Supported |
+|---------|-----------|
+| 0.1.x   | ✅ Yes    |
+
+After `v1.0.0`, this table will be extended with each stable release line and
+a clear end-of-life date.
 
 ## Reporting a vulnerability
 
