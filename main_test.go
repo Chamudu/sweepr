@@ -8,6 +8,27 @@ import (
 	"sweepr/scanner"
 )
 
+func TestShouldLaunchDefaultTUI(t *testing.T) {
+	tests := []struct {
+		name string
+		goos string
+		args []string
+		want bool
+	}{
+		{name: "windows without arguments", goos: "windows", args: []string{"sweepr.exe"}, want: true},
+		{name: "windows with an argument", goos: "windows", args: []string{"sweepr.exe", "--json"}, want: false},
+		{name: "non-windows without arguments", goos: "linux", args: []string{"sweepr"}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldLaunchDefaultTUI(tt.goos, tt.args); got != tt.want {
+				t.Fatalf("shouldLaunchDefaultTUI(%q, %#v) = %v; want %v", tt.goos, tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
 // TestRunScanJobsStartsJobsConcurrently uses synchronization instead of timing
 // comparisons. Both jobs announce that they started, then wait at the same
 // gate. A sequential implementation could never get both jobs to that gate.

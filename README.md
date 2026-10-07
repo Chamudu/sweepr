@@ -62,6 +62,10 @@ go build -o sweepr
 ./sweepr --tui --delete
 ```
 
+On Windows, double-clicking `sweepr.exe` opens the interactive dashboard
+automatically. The regular command-line report remains the default on Linux
+and macOS.
+
 The dashboard adapts to terminal size and scrolls long result lists. Use arrow
 keys or `j`/`k` to move, Page Up/Page Down for larger jumps, Space to toggle an
 item, `a` to select every item supported by the current mode, `c` to clear the
