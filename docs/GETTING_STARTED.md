@@ -3,6 +3,19 @@
 This guide is for people who are new to terminals, developer caches, or disk
 cleanup tools. You do not need to understand Go to use sweepr.
 
+## Before you begin
+
+Install sweepr for your platform first. See [Installing a packaged
+release](#installing-a-packaged-release) below. Once installed, confirm it
+works:
+
+```sh
+sweepr --version
+```
+
+You should see the version number, commit, and platform. If the command is not
+found, re-read the install section — the binary may not be on your `PATH`.
+
 ## What sweepr does
 
 Sweepr finds files that development tools can usually recreate, including
@@ -243,14 +256,30 @@ file. For machine-readable output use:
 sweepr --json
 ```
 
+### `remove Docker image … No such image`
+
+Docker reported that a dangling image listed during scanning was already removed
+before the deletion step. This is harmless — another process cleaned it up
+first. The remaining selections continue to be processed normally.
+
 ## A safe cleanup habit
 
+Follow this sequence every time, especially the first few times you use
+sweepr:
+
 1. Scan in read-only mode.
-2. Filter large or old items if the list is overwhelming.
-3. Read the focused-item description.
-4. Prefer safe trash for filesystem items.
-5. Review exact paths before confirmation.
-6. Use permanent deletion only when recreation and recovery are understood.
+2. Filter large or old items if the list is overwhelming (`--min-size`,
+   `--min-age`).
+3. Read the focused-item description and note the exact path.
+4. Prefer safe trash for filesystem items — you can recover mistakes until
+   the trash is emptied.
+5. Review exact paths on the confirmation screen before proceeding.
+6. Use permanent deletion only when you are certain the data can be
+   recreated or is no longer needed.
+
+Close any running applications that own a cache before removing it. An
+application that is writing to a cache while sweepr deletes it may produce
+corrupt state or simply recreate the files immediately.
 
 ## License and source code
 

@@ -1,0 +1,41 @@
+name: Dependency vulnerability scan
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # Run every Monday at 08:00 UTC so newly disclosed CVEs are caught weekly
+    # even when the repository is quiet.
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: vulncheck-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Scan for known vulnerabilities
+        run: govulncheck ./...
