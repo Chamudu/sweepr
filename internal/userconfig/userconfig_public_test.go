@@ -16,6 +16,7 @@ func setTestConfigDir(t *testing.T) string {
 		t.Setenv("AppData", directory)
 	case "darwin":
 		t.Setenv("HOME", directory)
+		directory = filepath.Join(directory, "Library", "Application Support")
 	default:
 		t.Setenv("XDG_CONFIG_HOME", directory)
 	}
