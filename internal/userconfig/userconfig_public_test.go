@@ -3,15 +3,30 @@ package userconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 )
+
+func setTestConfigDir(t *testing.T) string {
+	t.Helper()
+	directory := t.TempDir()
+	switch runtime.GOOS {
+	case "windows":
+		t.Setenv("AppData", directory)
+	case "darwin":
+		t.Setenv("HOME", directory)
+	default:
+		t.Setenv("XDG_CONFIG_HOME", directory)
+	}
+	return directory
+}
 
 // TestWelcomeCompleteReturnsFalseWhenFileAbsent verifies the normal first-launch
 // case: no config file exists yet, so WelcomeComplete must return false without
 // an error.
 func TestWelcomeCompleteReturnsFalseWhenFileAbsent(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	got, err := WelcomeComplete()
 	if err != nil {
 		t.Fatalf("WelcomeComplete() with no file = error %v", err)
@@ -24,7 +39,7 @@ func TestWelcomeCompleteReturnsFalseWhenFileAbsent(t *testing.T) {
 // TestMarkWelcomeCompleteAndReadBack writes the acknowledgement through the
 // public API and confirms WelcomeComplete sees it.
 func TestMarkWelcomeCompleteAndReadBack(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	if err := MarkWelcomeComplete(); err != nil {
 		t.Fatalf("MarkWelcomeComplete() = %v", err)
 	}
@@ -40,7 +55,7 @@ func TestMarkWelcomeCompleteAndReadBack(t *testing.T) {
 // TestMarkWelcomeCompleteIsIdempotent calls Mark twice and asserts the second
 // call succeeds and does not corrupt the file.
 func TestMarkWelcomeCompleteIsIdempotent(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	for i := range 2 {
 		if err := MarkWelcomeComplete(); err != nil {
 			t.Fatalf("MarkWelcomeComplete() call %d = %v", i+1, err)
@@ -56,7 +71,7 @@ func TestMarkWelcomeCompleteIsIdempotent(t *testing.T) {
 // returns (zero, false, nil) — not an error — matching the expected first-launch
 // behaviour.
 func TestLoadPreferencesReturnsFalseWhenAbsent(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	_, ok, err := LoadPreferences()
 	if err != nil {
 		t.Fatalf("LoadPreferences() with no file = %v", err)
@@ -69,7 +84,7 @@ func TestLoadPreferencesReturnsFalseWhenAbsent(t *testing.T) {
 // TestSaveAndLoadPreferencesRoundTrip saves a complete Preferences struct through
 // the public API and reads it back, asserting every field survives the round trip.
 func TestSaveAndLoadPreferencesRoundTrip(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	want := Preferences{
 		Root:     "/home/user/projects/myapp",
 		Scope:    "local",
@@ -113,7 +128,7 @@ func TestSaveAndLoadPreferencesRoundTrip(t *testing.T) {
 // reference to the caller's slice. Mutating the original after saving must not
 // affect what is later read back.
 func TestSavePreferencesDoesNotMutateSlices(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	enabled := []string{"dev-junk"}
 	excludes := []string{"/vendor"}
 	if err := SavePreferences(Preferences{Root: "/app", Scope: "local", Enabled: enabled, Excludes: excludes}); err != nil {
@@ -138,7 +153,7 @@ func TestSavePreferencesDoesNotMutateSlices(t *testing.T) {
 // TestSaveOverwritesPreviousPreferences confirms that calling SavePreferences
 // twice with different values replaces the stored preferences, not appends.
 func TestSaveOverwritesPreviousPreferences(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	first := Preferences{Root: "/first", Scope: "local", Enabled: []string{"dev-junk"}}
 	second := Preferences{Root: "/second", Scope: "global", Enabled: []string{"lang-cache"}}
 	for _, p := range []Preferences{first, second} {
@@ -162,7 +177,7 @@ func TestSaveOverwritesPreviousPreferences(t *testing.T) {
 // welcome acknowledgement on a config that already has saved scan preferences
 // does not erase those preferences.
 func TestWelcomeCompletePreservesPreferencesOnMark(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
+	setTestConfigDir(t)
 	want := Preferences{Root: "/project", Scope: "local", Enabled: []string{"os-junk"}}
 	if err := SavePreferences(want); err != nil {
 		t.Fatal(err)
@@ -184,7 +199,8 @@ func TestWelcomeCompletePreservesPreferencesOnMark(t *testing.T) {
 // truly corrupt JSON produces an error through the public API (not just
 // the internal load function tested elsewhere).
 func TestPublicLoadRejectsCorruptJSON(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "cfg", "sweepr")
+	configRoot := setTestConfigDir(t)
+	dir := filepath.Join(configRoot, "sweepr")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -192,13 +208,9 @@ func TestPublicLoadRejectsCorruptJSON(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{bad json`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "cfg"))
-	// Point XDG_CONFIG_HOME at the parent so os.UserConfigDir() finds our dir.
-	t.Setenv("XDG_CONFIG_HOME", filepath.Dir(dir))
 
 	// All public functions that call load() must surface the decode error.
 	if _, err := WelcomeComplete(); err == nil {
 		t.Error("WelcomeComplete() with corrupt JSON returned nil error")
 	}
 }
-
