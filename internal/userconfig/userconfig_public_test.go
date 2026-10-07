@@ -201,3 +201,4 @@ func TestPublicLoadRejectsCorruptJSON(t *testing.T) {
 		t.Error("WelcomeComplete() with corrupt JSON returned nil error")
 	}
 }
+
